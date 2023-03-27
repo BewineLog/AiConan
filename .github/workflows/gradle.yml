@@ -11,39 +11,42 @@ jobs:
 	build:
 		runs-on: ubuntu-latest
 		steps:
-		
-			- name: chekcout
-			- uses: actions/checkout@v3
+          - name: checkout
+            uses: actions/checkout@v3
 			
-			- name: Set up JDK 11
-      uses: actions/setup-java@v3
-      with:
-        java-version: '11'
-        distribution: 'temurin'
-    
-    - name : Copy application.yml from secret
-      run:
-        echo "${{ secrets.APPLICATION_YML }}" >> src/main/resources/application.yml
-    
-    - name: Build with Gradle
-      run: |
-          cd ./be
-          ./gradlew clean build
-		
-   ## 웹 이미지 빌드 및 도커허브에 push
-    - name: web docker build and push
-      run: |
-        docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-        docker build -t ${{ secrets.DOCKER_REPO }}/second-eyes-web .
-        docker push ${{ secrets.DOCKER_REPO }}/second-eyes-web
+          - name: Set up JDK 11
+            uses: actions/setup-java@v3
+            with:
+              java-version: '11'
+              distribution: 'temurin'
 
-     ## 서버에 접속하여 도커 이미지를 pull 받고 실행하기
-    - name: executing remote ssh commands using password
-      uses: appleboy/ssh-action@v0.1.6
-      with:
-	  host: ${{ secrets.HOST }}
-	  username: ${{ secrets.EC2_USERNAME }}
-	  key: ${{ secrets.KEY }}
-	  port: 22
-	  script: |
-	    ./docker.sh ${{ secrets.DOCKER_REPO }}
+          - name : Copy application.yml from secret
+            run:
+              echo "${{ secrets.APPLICATION_YML }}" >> src/main/resources/application.yml
+            shell: bash
+    
+          - name: Build with Gradle
+            run: |
+                cd ./be
+                ./gradlew clean build
+		
+         ## 웹 이미지 빌드 및 도커허브에 push
+          - name: web docker build and push
+            run: |
+              docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+              docker build -t ${{ secrets.DOCKER_REPO }}/web .
+              docker push ${{ secrets.DOCKER_REPO }}/web
+
+        ## docker compose up
+          - name: executing remote ssh commands using password
+            uses: appleboy/ssh-action@master
+            with:
+              host: ${{ secrets.HOST }}
+              username: ubuntu
+              key: ${{ secrets.KEY }}
+              script: |
+                sudo docker rm -f $(docker ps -qa)
+                sudo docker pull ${{ secrets.DOCKER_REPO }}/web
+                sudo docker pull ${{ secrets.DOCKER_REPO }}/nginx
+                docker-compose up -d
+                docker image prune -f
