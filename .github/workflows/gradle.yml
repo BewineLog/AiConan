@@ -30,7 +30,7 @@ jobs:
       - name: Build with Gradle
         run: |
             cd ./be
-            ./gradlew bootJar
+            ./gradlew clean build
 
       ## 도커 로그인
       - name: Docker Hub login
