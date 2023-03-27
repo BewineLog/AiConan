@@ -22,8 +22,9 @@ jobs:
           distribution: 'temurin'
 
       - name : Copy application.yml from secret
-        run:
-          echo "${{ secrets.APPLICATION_YML }}" >> src/main/resources/application.yml
+        run: |
+          cd ./be/src/main/resources
+          echo "${{ secrets.APPLICATION_YML }}" >> ./application.yml
         shell: bash
 
       - name: Build with Gradle
