@@ -30,7 +30,7 @@ jobs:
       - name: Build with Gradle
         run: |
             cd ./be
-            ./gradlew clean build
+            ./gradlew bootJar
 
      ## 웹 이미지 빌드 및 도커허브에 push
       - name: web docker build and push
