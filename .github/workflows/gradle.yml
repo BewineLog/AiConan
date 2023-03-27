@@ -23,6 +23,7 @@ jobs:
 
       - name : Copy application.yml from secret
         run: |
+          mkdir ./be/src/main/resources
           cd ./be/src/main/resources
           echo "${{ secrets.APPLICATION_YML }}" >> ./application.yml
         shell: bash
