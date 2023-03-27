@@ -57,7 +57,4 @@ jobs:
           sudo docker pull ${{ secrets.DOCKER_REPO }}/second-eyes-nginx
           docker-compose up -d
           docker image prune -f
-
-	
-	
-	
+	  
