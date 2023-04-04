@@ -2,10 +2,10 @@ package com.capstone.aiconan.domain;
 
 import javax.persistence.*;
 
-@Entity
+@Entity(name = "abnormals")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-@DiscriminatorColumn
-public class Abnormals {
+@DiscriminatorColumn(name = "DTYPE")
+public class Abnormal {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
