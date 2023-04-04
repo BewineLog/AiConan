@@ -55,8 +55,11 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.KEY }}
           script: |
-            sudo docker rm -f $(docker ps -qa)
-            sudo docker pull ${{ secrets.DOCKER_REPO }}/web
-            sudo docker pull ${{ secrets.DOCKER_REPO }}/nginx
+            # Stop and remove existing containers
+            docker-compose down -v
+            # Pull new images from Docker Hub
+            docker-compose pull
+            # Start containers in detached mode
             docker-compose up -d
+            # Remove unused images
             docker image prune -f
