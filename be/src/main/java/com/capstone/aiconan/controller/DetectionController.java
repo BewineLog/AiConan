@@ -33,16 +33,16 @@ public class DetectionController {
 
         RestTemplate restTemplate = new RestTemplate();
 
-        ResponseEntity<DetectionResponse> response = restTemplate
+        ResponseEntity<DetectionResponse> flaskResponse = restTemplate
                 .exchange(url, HttpMethod.GET, entity, DetectionResponse.class);
 
-        detectionService.recordAbnormals(response.getBody());
+        detectionService.recordAbnormalPackets(flaskResponse.getBody());
 
     }
 
     @GetMapping("/api/v1/test")
     public void receive() {
-       log.info(">> flask API received!");
+        log.info(">> flask API received!");
 
     }
 }

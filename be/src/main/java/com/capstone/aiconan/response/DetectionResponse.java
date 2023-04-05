@@ -1,5 +1,6 @@
 package com.capstone.aiconan.response;
 
+import com.capstone.aiconan.domain.TypeOfAttack;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -16,11 +17,13 @@ public class DetectionResponse {
     private final String CANNetId;
     private final String DLC;
     private final String data;
+    private final TypeOfAttack typeOfAttack;
 
     @Builder
-    public DetectionResponse(String CANNetId, String DLC, String data) {
+    public DetectionResponse(String CANNetId, String DLC, String data, TypeOfAttack typeOfAttack) {
         this.CANNetId = CANNetId;
         this.DLC = DLC;
         this.data = data;
+        this.typeOfAttack = typeOfAttack;
     }
 }
