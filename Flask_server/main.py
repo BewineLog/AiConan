@@ -84,7 +84,7 @@ def data_to_db(data):
     cursor = mysql_conn.cursor()
 
     # 쿼리문 실행 // 대충 이런 형식으로 쓸 수 있게 dictionary로 데이터 들어옴
-    query = "INSERT INTO user (Timestamp, CAN ID, DLC, data1, data2 ,data3, data4, data5, data6, data7, data8, attack) VALUES (%f, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d)" 
+    query = "INSERT INTO user (Timestamp, CAN ID, DLC, data1, data2 ,data3, data4, data5, data6, data7, data8, attack) VALUES (%f, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %s)" #dataformat은 다음과 같음 
     result = cursor.excute(query, (data['Timestamp'], data['CAN ID'], data['DLC'], data['data1~8'],data['attack']) )
 
     #data to db
