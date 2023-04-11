@@ -1,4 +1,6 @@
 streamlit==1.21.0
+streamlit-aggrid==0.3.4.post3
+pandas==1.5.3
 Flask==2.2.3
 numpy==1.24.2
 mysql-connector-python==8.0.32
