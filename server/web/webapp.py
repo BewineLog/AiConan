@@ -3,6 +3,12 @@ import datetime
 import pandas as pd
 import streamlit as st
 
+###################################
+from st_aggrid import AgGrid
+from st_aggrid.grid_options_builder import GridOptionsBuilder
+
+###################################
+
 # 모델 API endpoint
 api = "127.0.0.1"
 url = f'http://{api}:5000'
@@ -66,3 +72,37 @@ if st.button("Start Detection"):
     con.caption("Result")
     con.write(f"User Name : {str(input_user_name)}")
     con.write(f"date : {last_updated}")
+
+gb = GridOptionsBuilder.from_dataframe(shows)
+# enables pivoting on all columns,
+# however i'd need to change ag grid to allow export of pivoted/grouped data, however it select/filters groups
+gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
+gb.configure_selection(selection_mode="multiple", use_checkbox=True)
+gb.configure_side_bar()  # side_bar is clearly a typo :) should by sidebar
+gridOptions = gb.build()
+
+st.success(
+    f"""
+        💡 Tip! Hold the shift key when selecting rows to select multiple rows at once!
+        """
+)
+
+from st_aggrid import GridUpdateMode, DataReturnMode
+
+response = AgGrid(
+    shows,
+    gridOptions=gridOptions,
+    enable_enterprise_modules=True,
+    update_mode=GridUpdateMode.MODEL_CHANGED,
+    data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+    fit_columns_on_grid_load=False,
+)
+
+df = pd.DataFrame(response["selected_rows"])
+
+st.subheader("Filtered data will appear below 👇 ")
+st.text("")
+
+st.table(df)
+
+st.text("")
