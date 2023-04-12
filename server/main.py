@@ -1,66 +1,97 @@
+import flask
 from flask import Flask, request, jsonify
-import pandas as pd
-import tensorflow as tf
-import torch
-
 import config
 from db_connect import db
+import pymysql
+import json
+
+import pandas as pd
+import numpy as np
+import torch
+import tensorflow as tf
 
 app = Flask(__name__)
 
 # bring AI model
-model = tf.keras.models.load_model('model path')
-model.eval()
+# model = tf.keras.models.load_model('model path')
+# model.eval()
+
+mysql_conn = pymysql.connect(
+    host='127.0.0.1',
+    user='root',
+    password='1234',
+    db='user',
+    port=3306,
+    charset='utf8mb4',
+    cursorclass=pymysql.cursors.DictCursor
+)
 
 
 # 웹 서버 구동하는 곳.
 @app.route('/')
 def home():
-    return 'This is Home!'
+    return 'This is Home!!'
 
 
 # communicate with web
-@app.route('/getData', methods=["POST"])
+# @app.route('/getData', methods=["POST"])
 def send_to_spring():
     # Data => 단일 패킷 data 기준
-    idx = data['index']
-    data.pop('index', None)
-    data = data_transform(request.get_json())  # data to tensor
+    data = json.loads(request.get_json())  # get data from front-end and change json to dict
+    index, tensor_data = data_transform(data)  # data to tensor
 
-    result = model_predict(data)  # classification using AI
+    # This data for Test
+    # data = {'index':0,
+    #         'Timestamp':99.11,
+    #         'id': 8080,
+    #         'dlc': 8,
+    #         'data1': 1,
+    #         'data2': 1,
+    #         'data3': 1,
+    #         'data4': 1,
+    #         'data5': 1,
+    #         'data6': 1,
+    #         'data7': 1,
+    #         'data8': 1,
+    #         }
+
+    index, tensor_data = data_transform(data)
+
+    result = model_predict(tensor_data)  # classification using AI
 
     if result != 0:
-        resp = {'index':, 'result':}
-        resp['index'] = idx
+        resp = dict()
+        resp['index'] = index
         resp['result'] = result
 
-    send_data = json.dumps(data, ident=2)  # dictionary array to json
-
     data['attack'] = 'Spoofing' if result == 1 or 2 else 'Fuzzy' if result == 3 else 'DoS'
-    db_res = data_to_db(pd.DataFrame.to_dict(data))
+
+    db_res = data_to_db(data)
 
     if db_res == 'Success':
-        app.logger.info('{}번쨰 data 처리 완료.'.format(idx))
+        app.logger.info('{}번쨰 data 처리 완료.'.format(index))
+
     # 응답 처리 코드
-    return jsonify(send_data.json()), 200
+    return jsonify(json.dumps(resp)), 200
 
 
 def model_predict(data):
-    # 아직 어떤 처리를 해야할지 모르겠음.
-    return model(data)
+    # model not uploading
+    return 1  # if model uploaded, change to model(data)
 
 
 # if get data file from Spring. it makes data useful to model
 def data_transform(data):
-    df = pd.DataFrame.from_dict(data)  # need to consider index
-    return torch.tensor(df)
+    idx = data['index']
+    data.pop('index', None)
+    df = pd.DataFrame().from_dict(data, orient='index').T  # need to consider index
+
+    return idx, np.array(df)
 
 
 # make connection with AWS RDS DB
 def create_app(test_config=None):
-    app = Flask(__name__)
-
-    if test_config == None:
+    if test_config:
         app.config.from_object(config)
     else:
         app.config.update(test_config)
@@ -69,17 +100,23 @@ def create_app(test_config=None):
 
 
 def data_to_db(data):
+    app.logger.info('to_db')
     cursor = mysql_conn.cursor()
 
     # 쿼리문 실행 // 대충 이런 형식으로 쓸 수 있게 dictionary로 데이터 들어옴
-    query = "INSERT INTO user (Timestamp, CAN ID, DLC, data1, data2 ,data3, data4, data5, data6, data7, data8, attack) VALUES (%f, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %s)"  # dataformat은 다음과 같음
-    result = cursor.excute(query, (data['Timestamp'], data['CAN ID'], data['DLC'], data['data1~8'], data['attack']))
+    query = "INSERT INTO userTable (Timestamp, id, dlc, data1, data2 ,data3, data4, data5, data6, data7, data8, " \
+            "attack) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+    result = cursor.execute(query, (
+        float(data['Timestamp']), int(data['id']), int(data['dlc']), int(data['data1']), int(data['data2']),
+        int(data['data3']), int(data['data4']), int(data['data5']), int(data['data6']), int(data['data7']),
+        int(data['data8']), str(data['attack'])))
 
     # data to db
     mysql_conn.commit()
 
-    return 'Success'
+    return 'Success'  # return 처리 필요
 
 
 if __name__ == '__main__':
-    create_app().run('0.0.0.0', port=8000, debug=True)
+    # create_app().run('0.0.0.0', port=8000, debug=True)
+    app.run('0.0.0.0', port=8000, debug=True)
