@@ -1,14 +1,12 @@
-import flask
-from flask import Flask, request, jsonify
-import config
-from db_connect import db
-import pymysql
 import json
 
-import pandas as pd
 import numpy as np
-import torch
-import tensorflow as tf
+import pandas as pd
+import pymysql
+from flask import Flask, request, jsonify
+
+import config
+from db_connect import db
 
 app = Flask(__name__)
 
@@ -18,9 +16,9 @@ app = Flask(__name__)
 
 mysql_conn = pymysql.connect(
     host='127.0.0.1',
-    user='root',
-    password='1234',
-    db='user',
+    user='scott',
+    password='scott',
+    db='tigerdb',
     port=3306,
     charset='utf8mb4',
     cursorclass=pymysql.cursors.DictCursor
