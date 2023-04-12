@@ -1,4 +1,6 @@
 .DS_Store
-.idea
+.idea/
 nodeenv/
 .venv
+requirements.txt
+__pycache__
