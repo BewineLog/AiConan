@@ -6,9 +6,13 @@ import pymysql
 from flask import Flask, request, jsonify
 
 import config
-from db_connect import db
+
+
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 
 # bring AI model
 # model = tf.keras.models.load_model('model path')
@@ -16,9 +20,9 @@ app = Flask(__name__)
 
 mysql_conn = pymysql.connect(
     host='127.0.0.1',
-    user='scott',
-    password='scott',
-    db='tigerdb',
+    user='root',
+    password='1234',
+    db='user',
     port=3306,
     charset='utf8mb4',
     cursorclass=pymysql.cursors.DictCursor
