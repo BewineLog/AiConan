@@ -6,6 +6,7 @@ import pymysql
 from flask import Flask, request, jsonify
 
 import config
+import os
 
 
 
@@ -18,11 +19,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # model = tf.keras.models.load_model('model path')
 # model.eval()
 
+
+
 mysql_conn = pymysql.connect(
-    host='127.0.0.1',
-    user='root',
-    password='1234',
-    db='user',
+    host=os.environ.get("DB_HOST"),
+    user=os.environ.get("DB_USER"),
+    password=os.environ.get("DB_PASSWORD"),
+    db=os.environ.get("DB_NAME"),
     port=3306,
     charset='utf8mb4',
     cursorclass=pymysql.cursors.DictCursor
