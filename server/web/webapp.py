@@ -9,6 +9,7 @@ from st_aggrid.grid_options_builder import GridOptionsBuilder
 
 ###################################
 
+
 # 모델 API endpoint
 api = "127.0.0.1"
 url = f'http://{api}:5000'
