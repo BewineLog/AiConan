@@ -2,6 +2,7 @@ import datetime
 
 import pandas as pd
 import streamlit as st
+import requests
 
 ###################################
 from st_aggrid import AgGrid
@@ -11,8 +12,8 @@ from st_aggrid.grid_options_builder import GridOptionsBuilder
 
 # 모델 API endpoint
 api = "127.0.0.1"
-url = f'http://{api}:5000'
-predict_endpoint = '/model/predict/'
+url = f'http://{api}:8000'
+predict_endpoint = '/'
 shap_endpoint = '/model/calculate-shap-values/'
 
 
@@ -72,6 +73,8 @@ if st.button("Start Detection"):
     con.caption("Result")
     con.write(f"User Name : {str(input_user_name)}")
     con.write(f"date : {last_updated}")
+    results = requests.post(url + predict_endpoint)
+    con.write(results)
 
 gb = GridOptionsBuilder.from_dataframe(shows)
 # enables pivoting on all columns,
