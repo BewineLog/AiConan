@@ -1,24 +1,22 @@
 import json
 
 import numpy as np
+import pandas
 import pandas as pd
 import pymysql
 from flask import Flask, request, jsonify
 
 import config
 import os
-
-
+import csv
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-
 # bring AI model
 # model = tf.keras.models.load_model('model path')
 # model.eval()
-
 
 
 mysql_conn = pymysql.connect(
@@ -39,82 +37,83 @@ def home():
 
 
 # communicate with web
-# @app.route('/getData', methods=["POST"])
-def send_to_spring():
-    # Data => 단일 패킷 data 기준
-    data = json.loads(request.get_json())  # get data from front-end and change json to dict
-    index, tensor_data = data_transform(data)  # data to tensor
+# @app.route('/getCsv', methods=["POST"])
+def send_to_web():
+    data = request.files['file']  # get csv file from web, file name in ['']
 
-    # This data for Test
-    # data = {'index':0,
-    #         'Timestamp':99.11,
-    #         'id': 8080,
-    #         'dlc': 8,
-    #         'data1': 1,
-    #         'data2': 1,
-    #         'data3': 1,
-    #         'data4': 1,
-    #         'data5': 1,
-    #         'data6': 1,
-    #         'data7': 1,
-    #         'data8': 1,
-    #         }
+    csv_data = csv.reader(data)
 
-    index, tensor_data = data_transform(data)
+    resp = dict()
+    for row in csv_data:
+        index, np_data = data_transform(row)
+        result_bp = model_predict(np_data)  # binary classification using AI
 
-    result = model_predict(tensor_data)  # classification using AI
-
-    if result != 0:
-        resp = dict()
-        resp['index'] = index
-        resp['result'] = result
-
-    data['attack'] = 'Spoofing' if result == 1 or 2 else 'Fuzzy' if result == 3 else 'DoS'
-
-    db_res = data_to_db(data)
-
-    if db_res == 'Success':
-        app.logger.info('{}번쨰 data 처리 완료.'.format(index))
-
+        if result_bp == 0:
+            resp[index] = result_bp
+            # response = request.post('http://your-url.com/endpoint', data=np_data)
+            app.logger.info('binary classification success')
     # 응답 처리 코드
     return jsonify(json.dumps(resp)), 200
 
 
+# maybe 비동기적으로 동작하면서, db로 정보 전송할 것임.
+# @app.route('/getData', methods=["POST"])
+def send_to_db(data):
+    data = request.get_data()
+    data = data.decode('utf-8')
+    data = list(data.split(','))
+
+    result_dp = model_clf(data)  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
+    db_data = np.append(data, result_dp)
+    db_res = data_to_db(db_data)
+
+    if db_res == 'Success':
+        app.logger.info('db update success')
+
+    # 응답 처리 코드
+    return 200
+
+
 def model_predict(data):
     # model not uploading
+    # 1. scaling
+    # 2. model1 -> model2
+    # 3. result
     return 1  # if model uploaded, change to model(data)
+
+
+def model_clf(data):
+    # model(x)
+    return 1
 
 
 # if get data file from Spring. it makes data useful to model
 def data_transform(data):
-    idx = data['index']
-    data.pop('index', None)
-    df = pd.DataFrame().from_dict(data, orient='index').T  # need to consider index
-
-    return idx, np.array(df)
+    idx = data[0]
+    np_array = np.array(data[1:])
+    return idx, np_array
 
 
 # make connection with AWS RDS DB
-def create_app(test_config=None):
-    if test_config:
-        app.config.from_object(config)
-    else:
-        app.config.update(test_config)
-
-    db.init_app(app)
+# def create_app(test_config=None):
+#     if test_config:
+#         app.config.from_object(config)
+#     else:
+#         app.config.update(test_config)
+#
+#     db.init_app(app)
 
 
 def data_to_db(data):
+    # data index -> 0: time stamp 1: ID 2:DLC 3~10:data 11:attack
     app.logger.info('to_db')
     cursor = mysql_conn.cursor()
 
-    # 쿼리문 실행 // 대충 이런 형식으로 쓸 수 있게 dictionary로 데이터 들어옴
-    query = "INSERT INTO userTable (Timestamp, id, dlc, data1, data2 ,data3, data4, data5, data6, data7, data8, " \
-            "attack) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+    # 쿼리문 실행 
+    query = "INSERT INTO userTable (dlc, can_net_id, data, timestamp, attack_types_id)" \
+            "VALUES (%s, %s, %s, %s, %s)"
     result = cursor.execute(query, (
-        float(data['Timestamp']), int(data['id']), int(data['dlc']), int(data['data1']), int(data['data2']),
-        int(data['data3']), int(data['data4']), int(data['data5']), int(data['data6']), int(data['data7']),
-        int(data['data8']), str(data['attack'])))
+        str(data[2]), str(data[1]), str(data[3:11]), float(data[0]), int(data[11])))
 
     # data to db
     mysql_conn.commit()
