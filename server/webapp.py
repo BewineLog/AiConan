@@ -30,7 +30,13 @@ def _max_width_():
     """,
         unsafe_allow_html=True,
     )
-
+    
+@st.experimental_memo
+def get_data():
+    source = data.stocks()
+    source = source[source.date.gt("2004-01-01")]
+    return source
+    
 @st.experimental_memo(ttl=60 * 60 * 24)
 def get_chart(data):
     hover = alt.selection_single(
@@ -41,11 +47,11 @@ def get_chart(data):
     )
 
     lines = (
-        alt.Chart(data, height=500, title="Evolution of stock prices")
+        alt.Chart(data, height=500, title="Test Car Detection Graph")
         .mark_line()
         .encode(
             x=alt.X("date", title="Date"),
-            y=alt.Y("price", title="Price"),
+            y=alt.Y("packets", title="Packets"),
             color="symbol",
         )
     )
@@ -59,11 +65,11 @@ def get_chart(data):
         .mark_rule()
         .encode(
             x="yearmonthdate(date)",
-            y="price",
+            y="packets",
             opacity=alt.condition(hover, alt.value(0.3), alt.value(0)),
             tooltip=[
                 alt.Tooltip("date", title="Date"),
-                alt.Tooltip("price", title="Price (USD)"),
+                alt.Tooltip("packets", title="Packets"),
             ],
         )
         .add_selection(hover)
@@ -92,7 +98,7 @@ def streamlit_main():
         uploaded_file = st.file_uploader(
             "",
             key="1",
-            help="To activate 'wide mode', go to the hamburger menu > Settings > turn on 'wide mode'",
+            help="Upload CSV file",
         )
     
         if uploaded_file is not None:
@@ -100,6 +106,16 @@ def streamlit_main():
             shows = pd.read_csv(uploaded_file)
             uploaded_file.seek(0)
             file_container.write(shows)
+            
+            # Send POST request to Flask API with CSV file
+            files = {'file': uploaded_file.getvalue()}
+            response = requests.post("http://your-flask-api-url.com/detection", files=files)
+            
+            # Check response status
+            if response.status_code == 200:
+                st.success("CSV file uploaded successfully!")
+            else:
+                st.error("Error uploading CSV file.")
     
         else:
             st.info(
@@ -147,14 +163,13 @@ def streamlit_main():
         st.warning("DoS Attack Detected!")
     
     
-    st.success(
-        f"""
-            💡 Tip! Hold the shift key when selecting rows to select multiple rows at once!
-            """
-    )
+    st.success(f"""💡 Detection Finished!""")
+    
+    st.subheader("Packet Table 👇")
+    st.text("")
     
     from st_aggrid import GridUpdateMode, DataReturnMode
-    
+     
     response = AgGrid(
         shows,
         gridOptions=gridOptions,
@@ -165,16 +180,14 @@ def streamlit_main():
     )
     
     df = pd.DataFrame(response["selected_rows"])
-    
-    st.subheader("Detection results below 👇 ")
-    st.text("")
-    
     st.table(df)
-    
     st.text("")
     
+    st.subheader("Packet Graph 👇")
+    st.text("")
     
-    
+    source = get_data()
+    chart = get_chart(source)
     
 
 if __name__ == '__main__':
