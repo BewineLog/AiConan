@@ -1,5 +1,6 @@
 streamlit==1.10.0
 streamlit-aggrid==0.2.2.post2
+altair==4.2.2
 Flask==2.2.3
 Flask-Cors==3.0.10
 numpy==1.19.2
