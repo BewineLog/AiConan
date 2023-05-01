@@ -131,11 +131,17 @@ def streamlit_main():
             
                 # Check response status
                 if response.status_code == 200:
-                    st.success(f"""💡 Detection Finished!""")
-                      
+                    # Check response content for "DoS Attack Detected" message
+                    if "Attack Detected" in response.content.decode():
+                        # Show the alarm modal
+                        st.warning("DoS Attack Detected!")
+                    else:
+                        st.success("Detection Finished!")
+                  
                 else:
                     st.error("Error uploading CSV file.")
-    
+            
+        
         else:
             st.info(
                 f"""
@@ -147,29 +153,9 @@ def streamlit_main():
          
          
             
-        ###################################
-    
-        # 비정상 패킷 감지시 알람 기능
 
-        ###################################
-        
-        # Define the CSS style for the alarm modal
-        css = """
-        div[data-testid="stAlert"] > div {
-            background-color: red !important;
-            color: white !important;
-            text-align: center !important;
-            font-weight: bold !important;
-            font-size: 24px !important;
-            border-radius: 10px !important;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5) !important;
-        }
-        """
+       
     
-        # Add a button to trigger the alarm modal
-        if st.button("Trigger Alarm"):
-            # Show the alarm modal
-            st.warning("DoS Attack Detected!")
         
         ###################################
         
