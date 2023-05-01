@@ -6,17 +6,40 @@ import pandas as pd
 import pymysql
 from flask import Flask, request, jsonify
 
+
 import config
 import os
 import csv
+
+#추가
+from keras.models import load_model
+import torch
+import pickle
+from model import Model
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # bring AI model
-# model = tf.keras.models.load_model('model path')
-# model.eval()
+
+# 이진 분류 모델 파일 불러오기
+with open('path/scaler.pkl', 'rb') as f:
+    time_scaler = pickle.load(f)     # Timestamp scaler
+
+model_bl = load_model('path/Timeseries_binary_classification(LSTM)98.02.h5')    # learning for binary classification
+model_bc = load_model('path/Timeseries_binary_classification(CLF)98.02.h5')     # binary classification
+
+# 다중 분류 모델 파일 불러오기
+state_dict = torch.load('path/lstm_model_acc_99.62.pth')
+model_mc = Model()
+model_mc.load_state_dict(state_dict["model"])
+
+# for evaluation
+model_bl.eval()
+model_bc.eval()
+model_mc.eval()
 
 
 mysql_conn = pymysql.connect(
@@ -46,7 +69,7 @@ def detect():
     resp = dict()
     for row in csv_data:
         index, np_data = data_transform(row)
-        result_bp = model_predict(np_data)  # binary classification using AI
+        result_bp = model_detection(np_data)  # binary classification using AI
 
         if result_bp == 0:
             resp[index] = result_bp
@@ -63,7 +86,7 @@ def save(data):
     data = data.decode('utf-8')
     data = list(data.split(','))
 
-    result_dp = model_clf(data)  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
+    result_dp = model_classification(data)  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
     db_data = np.append(data, result_dp)
     db_res = insert(db_data)
 
@@ -74,15 +97,19 @@ def save(data):
     return 200
 
 
-def model_predict(data):
+def model_detection(data):
     # model not uploading
     # 1. scaling
     # 2. model1 -> model2
     # 3. result
+
+    # use model model_bl, model_bc
+
+
     return 1  # if model uploaded, change to model(data)
 
 
-def model_clf(data):
+def model_classification(data):
     # model(x)
     return 1
 
