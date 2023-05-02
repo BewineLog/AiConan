@@ -17,9 +17,6 @@ url = f'http://{api}:8000'
 predict_endpoint = '/'
 shap_endpoint = '/model/calculate-shap-values/'
 
-# URL of Flask API
-API_URL = f'http://{api}:8000'
-
 
 def _max_width_():
     max_width_str = f"max-width: 1800px;"
@@ -60,13 +57,14 @@ def create_chart(data):
 
     return chart
 
+
 def admin_page():
     st.title("AIConan service Admin Page")
     st.subheader("Packet Table 👇")
     st.text("")
     
     if st.button("Trigger Alarm"):
-        response = requests.get(API_URL)
+        response = requests.get(url + "/api/data")
         
         if response.status_code == 200:
             # Display table
@@ -103,7 +101,7 @@ def admin_page():
 
     
  
-def streamlit_main():
+def user_page():
     
     st.title("AI Conan Service")
     
@@ -127,7 +125,7 @@ def streamlit_main():
                 
                 # Send POST request to Flask API with CSV file
                 files = {'file': uploaded_file.getvalue()}
-                response = requests.post(API_URL, files=files)
+                response = requests.get(url + "/api/detection", files=files)
             
                 # Check response status
                 if response.status_code == 200:
@@ -183,7 +181,7 @@ def streamlit_main():
 # Define a function to show the selected page
 def show_page(page):
     if page == "User Page":
-        streamlit_main()
+        user_page()
     elif page == "Admin Page":
         admin_page()
 
