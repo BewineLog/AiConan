@@ -6,41 +6,36 @@ import pandas as pd
 import pymysql
 from flask import Flask, request, jsonify
 
-
 import config
 import os
 import csv
 
-#추가
+# 추가
 from keras.models import load_model
 import torch
 import pickle
 from model import Model
 
-
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# bring AI model
-
 # 이진 분류 모델 파일 불러오기
 with open('path/scaler.pkl', 'rb') as f:
-    time_scaler = pickle.load(f)     # Timestamp scaler
+    time_scaler = pickle.load(f)  # Timestamp scaler
 
-model_bl = load_model('path/Timeseries_binary_classification(LSTM)98.02.h5')    # learning for binary classification
-model_bc = load_model('path/Timeseries_binary_classification(CLF)98.02.h5')     # binary classification
+model_bl = load_model('path/Timeseries_binary_classification(LSTM)98.02.h5')  # learning for binary classification
+model_bc = load_model('path/Timeseries_binary_classification(CLF)98.02.h5')  # binary classification
 
 # 다중 분류 모델 파일 불러오기
 state_dict = torch.load('path/lstm_model_acc_99.62.pth')
 model_mc = Model()
-model_mc.load_state_dict(state_dict["model"])
+model_mc.load_state_dict(state_dict["model"])  # Multi classification model
 
 # for evaluation
 model_bl.eval()
 model_bc.eval()
 model_mc.eval()
-
 
 mysql_conn = pymysql.connect(
     host=os.environ.get("DB_HOST"),
@@ -62,19 +57,21 @@ def home():
 # communicate with web
 @app.route('/detection', methods=["POST"])
 def detect():
+    noa = 0  # # of attack
     data = request.files['file']  # get csv file from web, file name in ['']
 
     csv_data = csv.reader(data)
 
     resp = dict()
     for row in csv_data:
-        index, np_data = data_transform(row)
-        result_bp = model_detection(np_data)  # binary classification using AI
+        index, np_data = data_transform_for_detection(row)
+        result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
 
-        if result_bp == 0:
-            resp[index] = result_bp
-            # response = request.post('http://your-url.com/endpoint', data=np_data)
-            app.logger.info('binary classification success')
+        if result == 1:
+            noa += 1
+            # response = request.post('http://your-url.com/endpoint', data=row.to_json())
+    resp['numberOfAttack'] = noa
+    app.logger.info('binary classification success')
     # 응답 처리 코드
     return jsonify(json.dumps(resp)), 200
 
@@ -82,12 +79,13 @@ def detect():
 # maybe 비동기적으로 동작하면서, db로 정보 전송할 것임.
 @app.route('/data', methods=["POST"])
 def save(data):
-    data = request.get_data()
-    data = data.decode('utf-8')
-    data = list(data.split(','))
+    data = pd.read_json(request.get_data(), orient='records')
 
-    result_dp = model_classification(data)  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
-    db_data = np.append(data, result_dp)
+    idx, timestamp, data = data_transform_for_classification(data)
+    result = model_classification(data)  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
+
+    db_data = np.append(data, result)
+    db_data = np.append(data,timestamp) # @@이거 index 맞춰야해
     db_res = insert(db_data)
 
     if db_res == 'Success':
@@ -104,21 +102,54 @@ def model_detection(data):
     # 3. result
 
     # use model model_bl, model_bc
+    data_from_model = model_bl(data)
+    is_attack = model_bc(data_from_model.squeeze(axis=1))
 
-
-    return 1  # if model uploaded, change to model(data)
+    return is_attack.round()  # if model uploaded, change to model(data)
 
 
 def model_classification(data):
-    # model(x)
-    return 1
+    which_attack = model_mc(data)
+    return which_attack
 
 
 # if get data file from Spring. it makes data useful to model
-def data_transform(data):
-    idx = data[0]
-    np_array = np.array(data[1:])
-    return idx, np_array
+def data_transform_for_detection(data):
+    idx = data['Unnamed: 0']    # index가 필요할 경우
+
+    data_df = data.drop('Label', axis=1)  # 향후 test file을 어떻게 구성할지에 따라 사라질 수도 있음.
+
+    # Timestamp scaling
+    timestamp_data = data_df['Timestamp'].values.reshape(-1, 1)
+    scaled_timestamp_data = time_scaler.transform(timestamp_data)
+
+    # 변환된 데이터를 다시 데이터프레임에 반영
+    data_df['scaled_timestamp'] = scaled_timestamp_data.flatten()
+
+    data_df = data_df.drop(columns='Timestamp', axis=1)
+
+    data_df = data_df.reindex(
+        columns=['scaled_timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7',
+                 'Data8'])
+    # 차원 변환
+    data_df = np.expand_dims(data_df, axis=-1)
+    data_df = np.reshape(data_df, (data_df.shape[0], 1, data_df.shape[1]))
+
+    return idx, data_df
+
+
+def data_transform_for_classification(data):
+    idx = data['Unnamed: 0']    # index가 필요할 경우
+    timestamp = data['Timestamp']
+
+    data_df = data.drop('Label', axis=1)  # 향후 test file을 어떻게 구성할지에 따라 사라질 수도 있음.
+    data_df = data_df.drop('Timestamp', axis=1)
+
+    # 차원 변환
+    data_df = np.expand_dims(data_df, axis=-1)
+    data_df = np.reshape(data_df, (data_df.shape[0], 1, data_df.shape[1]))
+
+    return idx, timestamp, data_df
 
 
 # make connection with AWS RDS DB
@@ -143,19 +174,19 @@ def insert(data):
         timestamp = datetime.datetime.utcfromtimestamp(row['timestamp'])
         # Format the timestamp as a string in the format '%Y-%m-%d %H:%M:%S.%f'
         timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')
-        
+
         row_tuple = (
-            str(row['DLC']), 
-            str(row['ID']), 
-            str(row['data'][0]), 
-            str(row['data'][1]), 
-            str(row['data'][2]), 
-            str(row['data'][3]), 
-            str(row['data'][4]), 
-            str(row['data'][5]), 
-            str(row['data'][6]), 
-            str(row['data'][7]), 
-            timestamp_str, 
+            str(row['DLC']),
+            str(row['ID']),
+            str(row['data'][0]),
+            str(row['data'][1]),
+            str(row['data'][2]),
+            str(row['data'][3]),
+            str(row['data'][4]),
+            str(row['data'][5]),
+            str(row['data'][6]),
+            str(row['data'][7]),
+            timestamp_str,
             int(row['attack'])
         )
         rows_to_insert.append(row_tuple)
@@ -168,7 +199,6 @@ def insert(data):
     mysql_conn.commit()
 
     return 'Success'
-
 
 
 if __name__ == '__main__':
