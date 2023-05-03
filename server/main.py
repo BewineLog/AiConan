@@ -54,6 +54,9 @@ def home():
     return 'This is Flask API for AIConan Service!'
 
 
+import concurrent.futures
+import threading
+
 # communicate with web
 @app.route('/detection', methods=["POST"])
 def detect():
@@ -63,17 +66,36 @@ def detect():
     csv_data = csv.reader(data)
 
     resp = dict()
+
     for row in csv_data:
         index, np_data = data_transform_for_detection(row)
         result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
 
+<<<<<<< HEAD
         if result == 1:
             noa += 1
             # response = request.post('http://your-url.com/endpoint', data=row.to_json())
     resp['numberOfAttack'] = noa
     app.logger.info('binary classification success')
     # 응답 처리 코드
+=======
+        if result_bp == 0:
+            resp[index] = result_bp
+            app.logger.info('binary classification success')
+
+            # Save to DB concurrently with original request
+            threading.Thread(target=save, args=(index, np_data)).start()
+
+    # Submit each row to the executor to be processed asynchronously
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        for row in csv_data:
+            index, np_data = data_transform(row)
+            executor.submit(make_request_async, index, np_data)
+
+    # Return the response
+>>>>>>> 7f04ece (perf: async process for saving db (prototype))
     return jsonify(json.dumps(resp)), 200
+
 
 
 # maybe 비동기적으로 동작하면서, db로 정보 전송할 것임.
