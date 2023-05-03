@@ -70,34 +70,12 @@ def detect():
         index, np_data = data_transform_for_detection(row)
         result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
 
-<<<<<<< HEAD
         if result == 1:
             noa += 1
             # response = request.post('http://your-url.com/endpoint', data=row.to_json())
     resp['numberOfAttack'] = noa
     app.logger.info('binary classification success')
-    # 응답 처리 코드
-=======
-        if result_bp == 0:
-            resp[index] = result_bp
-            # response = request.post('http://your-url.com/endpoint', data=np_data)
-            app.logger.info('binary classification success')
-<<<<<<< HEAD
-
-            # Save to DB concurrently with original request
-            threading.Thread(target=save, args=(index, np_data)).start()
-
-    # Submit each row to the executor to be processed asynchronously
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        for row in csv_data:
-            index, np_data = data_transform(row)
-            executor.submit(make_request_async, index, np_data)
-
-    # Return the response
->>>>>>> 7f04ece (perf: async process for saving db (prototype))
-=======
-    # 응답 처리 코드
->>>>>>> a1ea90e (feat: user page & admin page separation)
+        
     return jsonify(json.dumps(resp)), 200
 
 

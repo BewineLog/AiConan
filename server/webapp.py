@@ -57,15 +57,11 @@ def create_chart(data):
 
     return chart
 
-<<<<<<< HEAD
 
-=======
->>>>>>> a1ea90e (feat: user page & admin page separation)
 def admin_page():
     st.title("AIConan service Admin Page")
     st.subheader("Packet Table 👇")
     st.text("")
-<<<<<<< HEAD
     
     if st.button("Monitoring Graph"):
         response = requests.get(url + "/api/data")
@@ -110,10 +106,8 @@ def admin_page():
  
 def user_page():
     
-=======
-    
     if st.button("Trigger Alarm"):
-        response = requests.get(API_URL)
+        response = requests.get(url + "/api/data")
         
         if response.status_code == 200:
             # Display table
@@ -150,9 +144,8 @@ def user_page():
 
     
  
-def streamlit_main():
+def user_page():
     
->>>>>>> a1ea90e (feat: user page & admin page separation)
     st.title("AI Conan Service")
     
     c29, c30, c31 = st.columns([1, 6, 1])
@@ -179,24 +172,13 @@ def streamlit_main():
             
                 # Check response status
                 if response.status_code == 200:
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> b9590a6 (feat: alarm to response not button trigger)
                     # Check response content for "DoS Attack Detected" message
                     if "Attack Detected" in response.content.decode():
                         # Show the alarm modal
                         st.warning("DoS Attack Detected!")
-                    else:
-                        st.success("Detection Finished!")
-                  
-<<<<<<< HEAD
-=======
+
                     st.success(f"""💡 Detection Finished!""")
                       
->>>>>>> a1ea90e (feat: user page & admin page separation)
-=======
->>>>>>> b9590a6 (feat: alarm to response not button trigger)
                 else:
                     st.error("Error uploading CSV file.")
             
@@ -242,20 +224,13 @@ def streamlit_main():
 # Define a function to show the selected page
 def show_page(page):
     if page == "User Page":
-<<<<<<< HEAD
         user_page()
-=======
-        streamlit_main()
->>>>>>> a1ea90e (feat: user page & admin page separation)
     elif page == "Admin Page":
         admin_page()
 
 # Set the app page configuration
-<<<<<<< HEAD
 st.set_page_config( page_title="AIConan Detecting Service", page_icon="favicon.ico")
-=======
-st.set_page_config(page_icon="✂️", page_title="AIConan Detecting Service")
->>>>>>> a1ea90e (feat: user page & admin page separation)
+
 
 # Create a sidebar to switch between pages
 selected_page = st.sidebar.selectbox("Select a page", ("User Page", "Admin Page"))
