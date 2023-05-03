@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 import requests
 import altair as alt
+import json
 
 ###################################
 from st_aggrid import AgGrid
@@ -171,11 +172,17 @@ def user_page():
                 # Check response status
                 if response.status_code == 200:
                     # Check response content for "DoS Attack Detected" message
-                    if "Attack Detected" in response.content.decode():
-                        # Show the alarm modal
-                        st.warning("DoS Attack Detected!")
+                    
+                    response_json = json.loads(response.text)
+                    print(">> ", response_json)
+                    number_of_attack = int(response_json[-2])
+       
+                    print(">> ", number_of_attack)
 
-                    st.success(f"""💡 Detection Finished!""")
+                    if number_of_attack > 0:
+                         st.warning(" Attack Detected!")
+                    else:
+                        st.success(f"""💡 Detection Finished!""")
                       
                 else:
                     st.error("Error uploading CSV file.")
