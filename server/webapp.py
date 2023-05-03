@@ -57,11 +57,15 @@ def create_chart(data):
 
     return chart
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> a1ea90e (feat: user page & admin page separation)
 def admin_page():
     st.title("AIConan service Admin Page")
     st.subheader("Packet Table 👇")
     st.text("")
+<<<<<<< HEAD
     
     if st.button("Monitoring Graph"):
         response = requests.get(url + "/api/data")
@@ -106,6 +110,49 @@ def admin_page():
  
 def user_page():
     
+=======
+    
+    if st.button("Trigger Alarm"):
+        response = requests.get(API_URL)
+        
+        if response.status_code == 200:
+            # Display table
+            data = pd.read_csv(io.StringIO(response.text))
+            
+            from st_aggrid import GridUpdateMode, DataReturnMode
+            
+            gb = GridOptionsBuilder.from_dataframe(data)
+            gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
+            gb.configure_selection(selection_mode="multiple", use_checkbox=True)
+            gb.configure_side_bar()
+            gridOptions = gb.build()
+            response = AgGrid(
+                data,
+                gridOptions=gridOptions,
+                enable_enterprise_modules=True,
+                update_mode=GridUpdateMode.MODEL_CHANGED,
+                data_return_mode=DataReturnMode.ALL,
+                fit_columns_on_grid_load=False,
+            )
+            df = pd.DataFrame(response["selected_rows"])
+            st.table(df)
+            st.text("")
+            
+            st.subheader("Packet Graph 👇")
+            st.text("")
+            chart = create_chart(data)
+            st.altair_chart(chart, use_container_width=True)
+            
+            st.success("CSV file processed successfully!")
+            
+        else:
+            st.error("Error fetching data from Flask API.")
+
+    
+ 
+def streamlit_main():
+    
+>>>>>>> a1ea90e (feat: user page & admin page separation)
     st.title("AI Conan Service")
     
     c29, c30, c31 = st.columns([1, 6, 1])
@@ -132,6 +179,7 @@ def user_page():
             
                 # Check response status
                 if response.status_code == 200:
+<<<<<<< HEAD
                     # Check response content for "DoS Attack Detected" message
                     if "Attack Detected" in response.content.decode():
                         # Show the alarm modal
@@ -139,6 +187,10 @@ def user_page():
                     else:
                         st.success("Detection Finished!")
                   
+=======
+                    st.success(f"""💡 Detection Finished!""")
+                      
+>>>>>>> a1ea90e (feat: user page & admin page separation)
                 else:
                     st.error("Error uploading CSV file.")
             
@@ -184,12 +236,20 @@ def user_page():
 # Define a function to show the selected page
 def show_page(page):
     if page == "User Page":
+<<<<<<< HEAD
         user_page()
+=======
+        streamlit_main()
+>>>>>>> a1ea90e (feat: user page & admin page separation)
     elif page == "Admin Page":
         admin_page()
 
 # Set the app page configuration
+<<<<<<< HEAD
 st.set_page_config( page_title="AIConan Detecting Service", page_icon="favicon.ico")
+=======
+st.set_page_config(page_icon="✂️", page_title="AIConan Detecting Service")
+>>>>>>> a1ea90e (feat: user page & admin page separation)
 
 # Create a sidebar to switch between pages
 selected_page = st.sidebar.selectbox("Select a page", ("User Page", "Admin Page"))
