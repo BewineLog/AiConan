@@ -28,20 +28,13 @@ model_bl = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binar
 model_bc = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binary_classification(CLF)98.02.h5')  # binary classification
 
 # 다중 분류 모델 파일 불러오기
-state_dict = torch.load('/home/ec2-user/environment/AiConan/model/model98.93.pth', map_location=torch.device('cpu'))
-model_mc = Model(input_shape=1, num_classes=5)
-model_mc_dict = model_mc.state_dict()
-for name, param in state_dict.items():
-    if name.startswith('model_mc.'):
-        name = name[len('model_mc.'):]
-        model_mc_dict[name].copy_(param)
-model_mc.load_state_dict(model_mc_dict)
+model_mc = torch.load('/home/ec2-user/environment/AiConan/model/model.pth', map_location=torch.device('cpu'))
+model_mc.load_state_dict(torch.load('/home/ec2-user/environment/AiConan/model/model_dict.pth', map_location=torch.device('cpu')))
 
 # for evaluation
-model_bl.eval()
-model_bc.eval()
+model_bl
+model_bc
 model_mc.eval()
-
 
 mysql_conn = pymysql.connect(
     host=os.environ.get("DB_HOST"),
@@ -61,16 +54,19 @@ def home():
 
 
 # communicate with web
-@app.route('/detection', methods=["POST"])
+@app.route('/api/detection', methods=["POST"])
 def detect():
     noa = 0  # # of attack
     data = request.files['file']  # get csv file from web, file name in ['']
 
-    csv_data = csv.reader(data)
 
+    import io
+    # csv_data = io.StringIO(data.stream.read().decode("UTF8"))
+    csv_data = pd.read_csv(data)
+    
     resp = dict()
-    for row in csv_data:
-        index, np_data = data_transform_for_detection(row)
+    for row in csv_data.iterrows():
+        np_data = data_transform_for_detection(pd.DataFrame([row]).transpose())
         result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
 
         if result == 1:
@@ -121,9 +117,9 @@ def model_classification(data):
 
 # if get data file from Spring. it makes data useful to model
 def data_transform_for_detection(data):
-    idx = data['Unnamed: 0']    # index가 필요할 경우
-
-    data_df = data.drop('Label', axis=1)  # 향후 test file을 어떻게 구성할지에 따라 사라질 수도 있음.
+    # idx = data['Unnamed: 0']    # index가 필요할 경우
+    data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7','Data8','Label'])
+    data_df = data_df.drop('Label', axis=1)  # 향후 test file을 어떻게 구성할지에 따라 사라질 수도 있음.
 
     # Timestamp scaling
     timestamp_data = data_df['Timestamp'].values.reshape(-1, 1)
@@ -141,7 +137,7 @@ def data_transform_for_detection(data):
     data_df = np.expand_dims(data_df, axis=-1)
     data_df = np.reshape(data_df, (data_df.shape[0], 1, data_df.shape[1]))
 
-    return idx, data_df
+    return data_df
 
 
 def data_transform_for_classification(data):

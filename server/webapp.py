@@ -104,45 +104,44 @@ def admin_page():
 
     
  
-def user_page():
-    if st.button("Trigger Alarm"):
-        response = requests.get(url + "/api/data")
+# def user_page():
+#     if st.button("Trigger Alarm"):
+#         response = requests.post(url + "/api/detection")
         
-        if response.status_code == 200:
-            # Display table
-            data = pd.read_csv(io.StringIO(response.text))
+#         if response.status_code == 200:
+#             # Display table
+#             data = pd.read_csv(io.StringIO(response.text))
             
-            from st_aggrid import GridUpdateMode, DataReturnMode
+#             from st_aggrid import GridUpdateMode, DataReturnMode
             
-            gb = GridOptionsBuilder.from_dataframe(data)
-            gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
-            gb.configure_selection(selection_mode="multiple", use_checkbox=True)
-            gb.configure_side_bar()
-            gridOptions = gb.build()
-            response = AgGrid(
-                data,
-                gridOptions=gridOptions,
-                enable_enterprise_modules=True,
-                update_mode=GridUpdateMode.MODEL_CHANGED,
-                data_return_mode=DataReturnMode.ALL,
-                fit_columns_on_grid_load=False,
-            )
-            df = pd.DataFrame(response["selected_rows"])
-            st.table(df)
-            st.text("")
+#             gb = GridOptionsBuilder.from_dataframe(data)
+#             gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
+#             gb.configure_selection(selection_mode="multiple", use_checkbox=True)
+#             gb.configure_side_bar()
+#             gridOptions = gb.build()
+#             response = AgGrid(
+#                 data,
+#                 gridOptions=gridOptions,
+#                 enable_enterprise_modules=True,
+#                 update_mode=GridUpdateMode.MODEL_CHANGED,
+#                 data_return_mode=DataReturnMode.ALL,
+#                 fit_columns_on_grid_load=False,
+#             )
+#             df = pd.DataFrame(response["selected_rows"])
+#             st.table(df)
+#             st.text("")
             
-            st.subheader("Packet Graph 👇")
-            st.text("")
-            chart = create_chart(data)
-            st.altair_chart(chart, use_container_width=True)
+#             st.subheader("Packet Graph 👇")
+#             st.text("")
+#             chart = create_chart(data)
+#             st.altair_chart(chart, use_container_width=True)
             
-            st.success("CSV file processed successfully!")
+#             st.success("CSV file processed successfully!")
             
-        else:
-            st.error("Error fetching data from Flask API.")
+#         else:
+#             st.error("Error fetching data from Flask API.")
 
     
- 
 def user_page():
     
     st.title("AI Conan Service")
@@ -167,7 +166,7 @@ def user_page():
                 
                 # Send POST request to Flask API with CSV file
                 files = {'file': uploaded_file.getvalue()}
-                response = requests.get(url + "/api/detection", files=files)
+                response = requests.post(url + "/api/detection", files=files)
             
                 # Check response status
                 if response.status_code == 200:
