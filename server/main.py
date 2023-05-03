@@ -21,21 +21,27 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # 이진 분류 모델 파일 불러오기
-with open('path/scaler.pkl', 'rb') as f:
+with open('/home/ec2-user/environment/AiConan/model/scaler.pkl', 'rb') as f:
     time_scaler = pickle.load(f)  # Timestamp scaler
 
-model_bl = load_model('path/Timeseries_binary_classification(LSTM)98.02.h5')  # learning for binary classification
-model_bc = load_model('path/Timeseries_binary_classification(CLF)98.02.h5')  # binary classification
+model_bl = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binary_classification(LSTM)98.02.h5')  # learning for binary classification
+model_bc = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binary_classification(CLF)98.02.h5')  # binary classification
 
 # 다중 분류 모델 파일 불러오기
-state_dict = torch.load('path/lstm_model_acc_99.62.pth')
-model_mc = Model()
-model_mc.load_state_dict(state_dict["model"])  # Multi classification model
+state_dict = torch.load('/home/ec2-user/environment/AiConan/model/model98.93.pth', map_location=torch.device('cpu'))
+model_mc = Model(input_shape=1, num_classes=5)
+model_mc_dict = model_mc.state_dict()
+for name, param in state_dict.items():
+    if name.startswith('model_mc.'):
+        name = name[len('model_mc.'):]
+        model_mc_dict[name].copy_(param)
+model_mc.load_state_dict(model_mc_dict)
 
 # for evaluation
 model_bl.eval()
 model_bc.eval()
 model_mc.eval()
+
 
 mysql_conn = pymysql.connect(
     host=os.environ.get("DB_HOST"),

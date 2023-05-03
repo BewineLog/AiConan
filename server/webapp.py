@@ -17,9 +17,6 @@ url = f'http://{api}:8000'
 predict_endpoint = '/'
 shap_endpoint = '/model/calculate-shap-values/'
 
-# URL of Flask API
-API_URL = f'http://{api}:8000'
-
 
 def _max_width_():
     max_width_str = f"max-width: 1800px;"
@@ -60,18 +57,93 @@ def create_chart(data):
 
     return chart
 
-  
-def streamlit_main():
+
+def admin_page():
+    st.title("AIConan service Admin Page")
+    st.subheader("Packet Table 👇")
+    st.text("")
     
-    st.set_page_config(page_icon="✂️", page_title="AIConan Detecting Service")
+    if st.button("Monitoring Graph"):
+        response = requests.get(url + "/api/data")
+        
+        if response.status_code == 200:
+            # Display table
+            data = pd.read_csv(io.StringIO(response.text))
+            
+            from st_aggrid import GridUpdateMode, DataReturnMode
+            
+            gb = GridOptionsBuilder.from_dataframe(data)
+            gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
+            gb.configure_selection(selection_mode="multiple", use_checkbox=True)
+            gb.configure_side_bar()
+            gridOptions = gb.build()
+            response = AgGrid(
+                data,
+                gridOptions=gridOptions,
+                enable_enterprise_modules=True,
+                update_mode=GridUpdateMode.MODEL_CHANGED,
+                data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+                fit_columns_on_grid_load=False,
+            )
+            
+            st.subheader("Packet Table 👇")
+            st.text("")
+            df = pd.DataFrame(response["selected_rows"])
+            st.table(df)
+            st.text("")
+            
+            st.subheader("Packet Graph 👇")
+            st.text("")
+            chart = create_chart(data)
+            st.altair_chart(chart, use_container_width=True)
+            
+            st.success("CSV file processed successfully!")
+            
+        else:
+            st.error("Error fetching data from Flask API.")
+
     
-    # 기타 변수 초기화
-    last_updated = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+ 
+def user_page():
+    if st.button("Trigger Alarm"):
+        response = requests.get(url + "/api/data")
+        
+        if response.status_code == 200:
+            # Display table
+            data = pd.read_csv(io.StringIO(response.text))
+            
+            from st_aggrid import GridUpdateMode, DataReturnMode
+            
+            gb = GridOptionsBuilder.from_dataframe(data)
+            gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
+            gb.configure_selection(selection_mode="multiple", use_checkbox=True)
+            gb.configure_side_bar()
+            gridOptions = gb.build()
+            response = AgGrid(
+                data,
+                gridOptions=gridOptions,
+                enable_enterprise_modules=True,
+                update_mode=GridUpdateMode.MODEL_CHANGED,
+                data_return_mode=DataReturnMode.ALL,
+                fit_columns_on_grid_load=False,
+            )
+            df = pd.DataFrame(response["selected_rows"])
+            st.table(df)
+            st.text("")
+            
+            st.subheader("Packet Graph 👇")
+            st.text("")
+            chart = create_chart(data)
+            st.altair_chart(chart, use_container_width=True)
+            
+            st.success("CSV file processed successfully!")
+            
+        else:
+            st.error("Error fetching data from Flask API.")
+
     
-    # st.image(
-    #     "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/apple/285/scissors_2702-fe0f.png",
-    #     width=100,
-    # )
+ 
+def user_page():
     
     st.title("AI Conan Service")
     
@@ -81,10 +153,10 @@ def streamlit_main():
         uploaded_file = st.file_uploader(
             "",
             key="1",
-            help="Upload CSV file",
+            help="Upload .csv file",
         )
         
-        input_user_name = st.text_input(label="User Name", value="default value")
+        input_user_name = st.text_input(label="User Name", value="default")
          
         if st.button("Start Detection"):
             if uploaded_file is not None:
@@ -95,59 +167,21 @@ def streamlit_main():
                 
                 # Send POST request to Flask API with CSV file
                 files = {'file': uploaded_file.getvalue()}
-                response = requests.post(API_URL, files=files)
+                response = requests.get(url + "/api/detection", files=files)
             
                 # Check response status
                 if response.status_code == 200:
-                    
-                    ###################################
-        
-                    # 탐지 완료에 대한 통계
-    
-                    ###################################
-            
+                    # Check response content for "DoS Attack Detected" message
+                    if "Attack Detected" in response.content.decode():
+                        # Show the alarm modal
+                        st.warning("DoS Attack Detected!")
+
                     st.success(f"""💡 Detection Finished!""")
-                    
-                    st.subheader("Packet Table 👇")
-                    st.text("")
-                    
-                    from st_aggrid import GridUpdateMode, DataReturnMode
-                
-                    gb = GridOptionsBuilder.from_dataframe(shows)
-                    # enables pivoting on all columns,
-                    # however i'd need to change ag grid to allow export of pivoted/grouped data, however it select/filters groups
-                    gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
-                    gb.configure_selection(selection_mode="multiple", use_checkbox=True)
-                    gb.configure_side_bar()  # side_bar is clearly a typo :) should by sidebar
-                    gridOptions = gb.build() 
-                     
-                    response = AgGrid(
-                        shows,
-                        gridOptions=gridOptions,
-                        enable_enterprise_modules=True,
-                        update_mode=GridUpdateMode.MODEL_CHANGED,
-                        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-                        fit_columns_on_grid_load=False,
-                    )
-                    
-                    df = pd.DataFrame(response["selected_rows"])
-                    st.table(df)
-                    st.text("")
-                    
-                    # Parse the response as a DataFrame
-                    data = pd.read_csv(io.StringIO(response.text))
-        
-                    # Generate and display the chart
-                    st.subheader("Packet Graph 👇")
-                    st.text("")
-                    chart = create_chart(data)
-                    st.altair_chart(chart, use_container_width=True)
-        
-                    st.success("CSV file uploaded and processed successfully!")
                       
                 else:
                     st.error("Error uploading CSV file.")
-    
+            
+        
         else:
             st.info(
                 f"""
@@ -159,29 +193,9 @@ def streamlit_main():
          
          
             
-        ###################################
-    
-        # 비정상 패킷 감지시 알람 기능
 
-        ###################################
-        
-        # Define the CSS style for the alarm modal
-        css = """
-        div[data-testid="stAlert"] > div {
-            background-color: red !important;
-            color: white !important;
-            text-align: center !important;
-            font-weight: bold !important;
-            font-size: 24px !important;
-            border-radius: 10px !important;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5) !important;
-        }
-        """
+       
     
-        # Add a button to trigger the alarm modal
-        if st.button("Trigger Alarm"):
-            # Show the alarm modal
-            st.warning("DoS Attack Detected!")
         
         ###################################
         
@@ -204,7 +218,19 @@ def streamlit_main():
         #         "File.csv",
         #         "Download to TXT",
         # )
-    
-    
-if __name__ == '__main__':
-    streamlit_main()
+        
+
+# Define a function to show the selected page
+def show_page(page):
+    if page == "User Page":
+        user_page()
+    elif page == "Admin Page":
+        admin_page()
+
+# Set the app page configuration
+st.set_page_config( page_title="AIConan Detecting Service", page_icon="favicon.ico")
+
+
+# Create a sidebar to switch between pages
+selected_page = st.sidebar.selectbox("Select a page", ("User Page", "Admin Page"))
+show_page(selected_page)
