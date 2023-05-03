@@ -55,7 +55,7 @@ def home():
 
 
 # communicate with web
-@app.route('/detection', methods=["POST"])
+@app.route('/api/detection', methods=["POST"])
 def detect():
     noa = 0  # # of attack
     data = request.files['file']  # get csv file from web, file name in ['']
@@ -77,7 +77,7 @@ def detect():
 
 
 # maybe 비동기적으로 동작하면서, db로 정보 전송할 것임.
-@app.route('/data', methods=["POST"])
+@app.route('/api/data', methods=["POST"])
 def save(data):
     data = pd.read_json(request.get_data(), orient='records')
 

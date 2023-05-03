@@ -63,7 +63,7 @@ def admin_page():
     st.subheader("Packet Table 👇")
     st.text("")
     
-    if st.button("Trigger Alarm"):
+    if st.button("Monitoring Graph"):
         response = requests.get(url + "/api/data")
         
         if response.status_code == 200:
@@ -82,9 +82,12 @@ def admin_page():
                 gridOptions=gridOptions,
                 enable_enterprise_modules=True,
                 update_mode=GridUpdateMode.MODEL_CHANGED,
-                data_return_mode=DataReturnMode.ALL,
+                data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
                 fit_columns_on_grid_load=False,
             )
+            
+            st.subheader("Packet Table 👇")
+            st.text("")
             df = pd.DataFrame(response["selected_rows"])
             st.table(df)
             st.text("")
@@ -186,7 +189,7 @@ def show_page(page):
         admin_page()
 
 # Set the app page configuration
-st.set_page_config(page_icon="✂️", page_title="AIConan Detecting Service")
+st.set_page_config( page_title="AIConan Detecting Service", page_icon="favicon.ico")
 
 # Create a sidebar to switch between pages
 selected_page = st.sidebar.selectbox("Select a page", ("User Page", "Admin Page"))
