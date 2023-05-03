@@ -180,6 +180,9 @@ def streamlit_main():
                 # Check response status
                 if response.status_code == 200:
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> b9590a6 (feat: alarm to response not button trigger)
                     # Check response content for "DoS Attack Detected" message
                     if "Attack Detected" in response.content.decode():
                         # Show the alarm modal
@@ -187,10 +190,13 @@ def streamlit_main():
                     else:
                         st.success("Detection Finished!")
                   
+<<<<<<< HEAD
 =======
                     st.success(f"""💡 Detection Finished!""")
                       
 >>>>>>> a1ea90e (feat: user page & admin page separation)
+=======
+>>>>>>> b9590a6 (feat: alarm to response not button trigger)
                 else:
                     st.error("Error uploading CSV file.")
             
