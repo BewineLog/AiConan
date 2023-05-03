@@ -21,14 +21,14 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # 이진 분류 모델 파일 불러오기
-with open('/home/ec2-user/environment/AiConan/model/scaler.pkl', 'rb') as f:
+with open('path/scaler.pkl', 'rb') as f:
     time_scaler = pickle.load(f)  # Timestamp scaler
 
-model_bl = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binary_classification(LSTM)98.02.h5')  # learning for binary classification
-model_bc = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binary_classification(CLF)98.02.h5')  # binary classification
+model_bl = load_model('path/Timeseries_binary_classification(LSTM)98.02.h5')  # learning for binary classification
+model_bc = load_model('path/Timeseries_binary_classification(CLF)98.02.h5')  # binary classification
 
 # 다중 분류 모델 파일 불러오기
-state_dict = torch.load('/home/ec2-user/environment/AiConan/model/lstm_model_acc_99.62.pth')
+state_dict = torch.load('path/lstm_model_acc_99.62.pth')
 model_mc = Model()
 model_mc.load_state_dict(state_dict["model"])  # Multi classification model
 
@@ -54,11 +54,8 @@ def home():
     return 'This is Flask API for AIConan Service!'
 
 
-import concurrent.futures
-import threading
-
 # communicate with web
-@app.route('/api/detection', methods=["POST"])
+@app.route('/detection', methods=["POST"])
 def detect():
     noa = 0  # # of attack
     data = request.files['file']  # get csv file from web, file name in ['']
@@ -75,13 +72,12 @@ def detect():
             # response = request.post('http://your-url.com/endpoint', data=row.to_json())
     resp['numberOfAttack'] = noa
     app.logger.info('binary classification success')
-        
+    # 응답 처리 코드
     return jsonify(json.dumps(resp)), 200
 
 
-
 # maybe 비동기적으로 동작하면서, db로 정보 전송할 것임.
-@app.route('/api/data', methods=["POST"])
+@app.route('/data', methods=["POST"])
 def save(data):
     data = pd.read_json(request.get_data(), orient='records')
 

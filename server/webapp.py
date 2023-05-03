@@ -105,7 +105,6 @@ def admin_page():
     
  
 def user_page():
-    
     if st.button("Trigger Alarm"):
         response = requests.get(url + "/api/data")
         
