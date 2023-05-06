@@ -139,8 +139,7 @@ def data_transform_for_detection(data):
     data_df = data_df.drop(columns='DLC', axis=1)
 
     data_df = data_df.reindex(
-        columns=['scaled_timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7',
-                 'Data8'])
+        columns=['scaled_timestamp', 'CAN ID', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
     # 차원 변환
     data_df = np.expand_dims(data_df, axis=-1)
     data_df = np.reshape(data_df, (data_df.shape[0], 1, data_df.shape[1]))
