@@ -59,6 +59,19 @@ def create_chart(data):
     return chart
 
 
+# define login page interface
+def login():
+    st.title('Admin Login')
+    email = st.text_input('Email')
+    password = st.text_input('Password', type='password')
+    if st.button('Login'):
+        response = requests.post('http://localhost:5000/authenticate', data={'email': email, 'password': password})
+        if response.status_code == 200:
+            st.success('Login successful')
+            st.session_state.user_id = response.json()['user_id']
+        else:
+            st.error('Login failed')
+
 def admin_page():
     st.title("AIConan service Admin Page")
     st.subheader("Packet Table 👇")
