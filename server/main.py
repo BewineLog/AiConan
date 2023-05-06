@@ -120,7 +120,7 @@ def data_transform_for_detection(data):
 
     if 'Unnamed: 0' in data.columns:
         idx = data['Unnamed: 0']
-        data.drop(columns='Unnamed :0', axis = 1)
+        data.drop(columns='Unnamed: 0', axis = 1)
     data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8', 'Label'])
     data_df = data_df.drop('Label', axis=1)  # 향후 test file을 어떻게 구성할지에 따라 사라질 수도 있음.
     # Timestamp scaling
