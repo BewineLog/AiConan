@@ -71,7 +71,7 @@ def detect():
         df_row = pd.DataFrame([row], columns=csv_data.columns)
         np_data = data_transform_for_detection(df_row)
         result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
-        if int(result) >= 1:
+        if int(np.argmax(result)) >= 1:
             noa += 1
             # response = request.post('http://your-url.com/endpoint', data=row.to_json())
     resp['numberOfAttack'] = noa
