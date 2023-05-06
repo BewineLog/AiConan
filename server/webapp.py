@@ -116,46 +116,7 @@ def admin_page():
         else:
             st.error("Error fetching data from Flask API.")
 
-    
- 
-# def user_page():
-#     if st.button("Trigger Alarm"):
-#         response = requests.post(url + "/api/detection")
-        
-#         if response.status_code == 200:
-#             # Display table
-#             data = pd.read_csv(io.StringIO(response.text))
-            
-#             from st_aggrid import GridUpdateMode, DataReturnMode
-            
-#             gb = GridOptionsBuilder.from_dataframe(data)
-#             gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
-#             gb.configure_selection(selection_mode="multiple", use_checkbox=True)
-#             gb.configure_side_bar()
-#             gridOptions = gb.build()
-#             response = AgGrid(
-#                 data,
-#                 gridOptions=gridOptions,
-#                 enable_enterprise_modules=True,
-#                 update_mode=GridUpdateMode.MODEL_CHANGED,
-#                 data_return_mode=DataReturnMode.ALL,
-#                 fit_columns_on_grid_load=False,
-#             )
-#             df = pd.DataFrame(response["selected_rows"])
-#             st.table(df)
-#             st.text("")
-            
-#             st.subheader("Packet Graph 👇")
-#             st.text("")
-#             chart = create_chart(data)
-#             st.altair_chart(chart, use_container_width=True)
-            
-#             st.success("CSV file processed successfully!")
-            
-#         else:
-#             st.error("Error fetching data from Flask API.")
 
-    
 def user_page():
     
     st.title("AI Conan Service")
@@ -170,7 +131,13 @@ def user_page():
         )
         
         input_user_name = st.text_input(label="User Name", value="default")
-         
+        
+        if uploaded_file is not None:
+            file_container = st.expander("Check your uploaded .csv")
+            shows = pd.read_csv(uploaded_file)
+            uploaded_file.seek(0)
+            file_container.write(shows)
+        
         if st.button("Start Detection"):
             if uploaded_file is not None:
                 # Check inserted .csv file
