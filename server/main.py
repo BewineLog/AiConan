@@ -30,13 +30,13 @@ with open('/home/ec2-user/environment/AiConan/model/time_scaler.pkl', 'rb') as f
 # model_bc = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binary_classification(CLF)98.02.h5')  # binary classification
 model = load_model('/home/ec2-user/environment/AiConan/model/model.h5')
 
-# 다중 분류 모델 파일 불러오기
-model_mc = torch.load('/home/ec2-user/environment/AiConan/model/model.pth', map_location=torch.device('cpu'))
-model_mc.load_state_dict(torch.load('/home/ec2-user/environment/AiConan/model/model_dict.pth', map_location=torch.device('cpu')))
-
-# for evaluation
-
-model_mc.eval()
+# # 다중 분류 모델 파일 불러오기
+# model_mc = torch.load('/home/ec2-user/environment/AiConan/model/model.pth', map_location=torch.device('cpu'))
+# model_mc.load_state_dict(torch.load('/home/ec2-user/environment/AiConan/model/model_dict.pth', map_location=torch.device('cpu')))
+#
+# # for evaluation
+#
+# model_mc.eval()
 
 mysql_conn = pymysql.connect(
     host=os.environ.get("DB_HOST"),
