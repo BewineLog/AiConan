@@ -22,18 +22,20 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # 이진 분류 모델 파일 불러오기
 with open('/home/ec2-user/environment/AiConan/model/scaler.pkl', 'rb') as f:
+    scaler = pickle.load(f)  # Timestamp scaler
+with open('/home/ec2-user/environment/AiConan/model/time_scaler.pkl', 'rb') as f:
     time_scaler = pickle.load(f)  # Timestamp scaler
 
-model_bl = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binary_classification(LSTM)98.02.h5')  # learning for binary classification
-model_bc = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binary_classification(CLF)98.02.h5')  # binary classification
+# model_bl = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binary_classification(LSTM)98.02.h5')  # learning for binary classification
+# model_bc = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binary_classification(CLF)98.02.h5')  # binary classification
+model = load_model('/home/ec2-user/environment/AiConan/model/model.h5')
 
 # 다중 분류 모델 파일 불러오기
 model_mc = torch.load('/home/ec2-user/environment/AiConan/model/model.pth', map_location=torch.device('cpu'))
 model_mc.load_state_dict(torch.load('/home/ec2-user/environment/AiConan/model/model_dict.pth', map_location=torch.device('cpu')))
 
 # for evaluation
-model_bl
-model_bc
+
 model_mc.eval()
 
 mysql_conn = pymysql.connect(
@@ -63,18 +65,13 @@ def detect():
     import io
     # csv_data = io.StringIO(data.stream.read().decode("UTF8"))
     csv_data = pd.read_csv(data)
-    print('csv:',csv_data)
     resp = dict()
     for row in csv_data.values:
     # row: 해당 행의 데이터 (1차원 배열 형식)
         df_row = pd.DataFrame([row], columns=csv_data.columns)
-        print("df_row:")
-        print(df_row)
         np_data = data_transform_for_detection(df_row)
         result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
-        print('res:',int(result))
-        if int(result) == 1:
-            
+        if int(result) >= 1:
             noa += 1
             # response = request.post('http://your-url.com/endpoint', data=row.to_json())
     resp['numberOfAttack'] = noa
@@ -92,7 +89,7 @@ def save(data):
     result = model_classification(data)  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
 
     db_data = np.append(data, result)
-    db_data = np.append(data,timestamp) # @@이거 index 맞춰야해
+    db_data = np.append(db_data,timestamp) # @@이거 index 맞춰야해
     db_res = insert(db_data)
 
     if db_res == 'Success':
@@ -109,12 +106,8 @@ def model_detection(data):
     # 3. result
 
     # use model model_bl, model_bc
-    print('detection?')
-    data_from_model = model_bl.predict(data)
-    print('detection??')
-    is_attack = model_bc.predict(data_from_model.squeeze(axis=1))
-    print(is_attack,type(is_attack))
-    return is_attack.round()  # if model uploaded, change to model(data)
+    is_attack = model(data)
+    return is_attack  # if model uploaded, change to model(data)
 
 
 def model_classification(data):
@@ -124,24 +117,30 @@ def model_classification(data):
 
 # if get data file from Spring. it makes data useful to model
 def data_transform_for_detection(data):
-    idx = data['Unnamed: 0']    # index가 필요할 경우
-    data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7','Data8','Label'])
+
+    if 'Unnamed: 0' in data.columns:
+        idx = data['Unnamed: 0']
+        data.drop(columns='Unnamed :0', axis = 1)
+    data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8', 'Label'])
     data_df = data_df.drop('Label', axis=1)  # 향후 test file을 어떻게 구성할지에 따라 사라질 수도 있음.
-    print("1:",data_df)
     # Timestamp scaling
     timestamp_data = data_df['Timestamp'].values.reshape(-1, 1)
     scaled_timestamp_data = time_scaler.transform(timestamp_data)
 
+    # Data scaling
+    cols_to_scale = ['Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8']
+    data_df[cols_to_scale] = scaler.fit_transform(data_df[cols_to_scale])
+
     # 변환된 데이터를 다시 데이터프레임에 반영
-    data_df = data_df.astype('int')
+    # data_df = data_df.astype('int')
     data_df['scaled_timestamp'] = scaled_timestamp_data.flatten()
 
     data_df = data_df.drop(columns='Timestamp', axis=1)
+    data_df = data_df.drop(columns='DLC', axis=1)
 
     data_df = data_df.reindex(
         columns=['scaled_timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7',
                  'Data8'])
-    print("2:",data_df)
     # 차원 변환
     data_df = np.expand_dims(data_df, axis=-1)
     data_df = np.reshape(data_df, (data_df.shape[0], 1, data_df.shape[1]))
