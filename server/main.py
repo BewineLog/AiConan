@@ -89,7 +89,7 @@ def authenticate():
 def detect():
     noa = 0  # # of attack
     data = request.files['file']  # get csv file from web, file name in ['']
-
+    
     csv_data = pd.read_csv(data)
     df_row = pd.DataFrame(csv_data, columns=csv_data.columns)
     np_data = data_transform_for_detection(df_row)
