@@ -99,7 +99,7 @@ def detect():
     result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
     unique, counts = np.unique(tf.round(result).numpy(), return_counts=True)
             # response = request.post('http://your-url.com/endpoint', data=row.to_json())
-    resp['numberOfAttack'] = counts[1]
+    resp['numberOfAttack'] = int(counts[1])
     app.logger.info('binary classification success')
     # 응답 처리 코드
     return jsonify(json.dumps(resp)), 200
