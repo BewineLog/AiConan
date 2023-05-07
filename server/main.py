@@ -18,6 +18,7 @@ from model import Model
 
 #add
 from collections import Counter
+import tensorflow as tf
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -96,7 +97,7 @@ def detect():
 
     # for row in csv_data.values:
     result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
-    noa = Counter(result.round().tolist())[1.0]
+    noa = Counter(tf.round(result).numpy().tolist())[1.0]
             # response = request.post('http://your-url.com/endpoint', data=row.to_json())
     resp['numberOfAttack'] = noa
     app.logger.info('binary classification success')
