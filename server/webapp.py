@@ -62,59 +62,64 @@ def create_chart(data):
 # define login page interface
 def login():
     st.title('Admin Login')
-    email = st.text_input('Email')
-    password = st.text_input('Password', type='password')
+    userId = st.text_input('userId')
+    password = st.text_input('password', type="password")
+    
     if st.button('Login'):
-        response = requests.post('http://localhost:5000/authenticate', data={'email': email, 'password': password})
-        if response.status_code == 200:
+        response = requests.post(url + "/authenticate", data={'userId': userId, 'password': password})
+        
+        if response.status_code == 200 and 'token' in response.json():
             st.success('Login successful')
-            st.session_state.user_id = response.json()['user_id']
+            st.session_state.token = response.json()['token']
+            admin_page()
         else:
-            st.error('Login failed')
+            st.error('Invalid user ID or password.')
+
 
 def admin_page():
+    print(">> welcome to admin page")
     st.title("AIConan service Admin Page")
     st.subheader("Packet Table 👇")
     st.text("")
     
-    if st.button("Monitoring Graph"):
-        response = requests.get(url + "/api/data")
-        
-        if response.status_code == 200:
-            # Display table
-            data = pd.read_csv(io.StringIO(response.text))
+    # if st.button("Monitoring Graph"):
+    #     response = requests.get(url + "/api/data")
+
+    #     if response.status_code == 200:
+    #         # Display table
+    #         data = pd.read_csv(io.StringIO(response.text))
             
-            from st_aggrid import GridUpdateMode, DataReturnMode
+    #         from st_aggrid import GridUpdateMode, DataReturnMode
             
-            gb = GridOptionsBuilder.from_dataframe(data)
-            gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
-            gb.configure_selection(selection_mode="multiple", use_checkbox=True)
-            gb.configure_side_bar()
-            gridOptions = gb.build()
-            response = AgGrid(
-                data,
-                gridOptions=gridOptions,
-                enable_enterprise_modules=True,
-                update_mode=GridUpdateMode.MODEL_CHANGED,
-                data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-                fit_columns_on_grid_load=False,
-            )
+    #         gb = GridOptionsBuilder.from_dataframe(data)
+    #         gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
+    #         gb.configure_selection(selection_mode="multiple", use_checkbox=True)
+    #         gb.configure_side_bar()
+    #         gridOptions = gb.build()
+    #         response = AgGrid(
+    #             data,
+    #             gridOptions=gridOptions,
+    #             enable_enterprise_modules=True,
+    #             update_mode=GridUpdateMode.MODEL_CHANGED,
+    #             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+    #             fit_columns_on_grid_load=False,
+    #         )
             
-            st.subheader("Packet Table 👇")
-            st.text("")
-            df = pd.DataFrame(response["selected_rows"])
-            st.table(df)
-            st.text("")
+    #         st.subheader("Packet Table 👇")
+    #         st.text("")
+    #         df = pd.DataFrame(response["selected_rows"])
+    #         st.table(df)
+    #         st.text("")
             
-            st.subheader("Packet Graph 👇")
-            st.text("")
-            chart = create_chart(data)
-            st.altair_chart(chart, use_container_width=True)
+    #         st.subheader("Packet Graph 👇")
+    #         st.text("")
+    #         chart = create_chart(data)
+    #         st.altair_chart(chart, use_container_width=True)
             
-            st.success("CSV file processed successfully!")
+    #         st.success("CSV file processed successfully!")
             
-        else:
-            st.error("Error fetching data from Flask API.")
+    #     else:
+    #         st.error("Error fetching data from Flask API.")
 
 
 def user_page():
@@ -211,6 +216,9 @@ def show_page(page):
     if page == "User Page":
         user_page()
     elif page == "Admin Page":
+        if 'user_id' not in st.session_state:
+          login()
+    else:
         admin_page()
 
 # Set the app page configuration

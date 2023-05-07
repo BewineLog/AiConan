@@ -4,7 +4,7 @@ import numpy as np
 import pandas
 import pandas as pd
 import pymysql
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template, redirect, session
 
 import config
 import os
@@ -38,6 +38,8 @@ model = load_model('/home/ec2-user/environment/AiConan/model/model.h5')
 #
 # model_mc.eval()
 
+
+
 mysql_conn = pymysql.connect(
     host=os.environ.get("DB_HOST"),
     user=os.environ.get("DB_USER"),
@@ -48,13 +50,36 @@ mysql_conn = pymysql.connect(
     cursorclass=pymysql.cursors.DictCursor
 )
 
+app.secret_key = os.environ.get("APP_SECRET_KEY", "default_secret_key")
 
-# 웹 서버 구동하는 곳.
-@app.route('/')
-def home():
-    return 'This is Flask API for AIConan Service!'
+# define login page endpoint
+@app.route('/auth')
+def login():
+    return render_template('login.html')
 
+import secrets
+# define authentication endpoint
+@app.route('/authenticate', methods=['POST'])
+def authenticate():
+    userId = request.form['userId']
+    password = request.form['password']
+    print(f">>> user id : {userId}, user pwd : {password}")
+    
+    # check if user exists in the database
+    cursor = mysql_conn.cursor()
+    cursor.execute("SELECT id FROM admin WHERE userId = %s AND password = %s", (userId, password))
+    admin = cursor.fetchone()
 
+    # if user exists, create a new authentication token and return it as a JSON response
+    import uuid
+    if admin is not None:
+        token = str(uuid.uuid4())
+        session['admin'] = admin['id']
+        print(">>> admin login")
+        return jsonify({'token': token})
+    else:
+        return jsonify({'error': 'Invalid user ID or password.'}), 401
+      
 # communicate with web
 @app.route('/api/detection', methods=["POST"])
 def detect():
