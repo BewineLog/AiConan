@@ -98,7 +98,7 @@ def detect():
     # for row in csv_data.values:
     result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
     # unique, counts = np.unique(tf.round(result).numpy(), return_counts=True)
-    noa = Counter(result.round().tolist())[1.0]
+    noa = Counter(result.round().numpy().tolist())[1.0]
             # response = request.post('http://your-url.com/endpoint', data=row.to_json())
     resp['numberOfAttack'] = noa
     app.logger.info('binary classification success')
