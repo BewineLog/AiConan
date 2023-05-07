@@ -131,7 +131,11 @@ def model_detection(data):
     # 3. result
 
     # use model model_bl, model_bc
-    is_attack = model(data)
+    threshold = 1.0556942654891701
+    res = model(data)
+    mse = np.mean(np.power(data - res, 2), axis=1)
+    y_pred = np.where(mse > threshold * 0.1, 1, 0)
+    is_attack = np.mean(y_pred, axis=1)
     return is_attack  # if model uploaded, change to model(data)
 
 
