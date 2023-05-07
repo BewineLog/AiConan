@@ -138,6 +138,7 @@ def user_page():
         input_user_name = st.text_input(label="User Name", value="default")
         
         if uploaded_file is not None:
+            # Check inserted .csv file
             file_container = st.expander("Check your uploaded .csv")
             shows = pd.read_csv(uploaded_file)
             uploaded_file.seek(0)
@@ -145,11 +146,6 @@ def user_page():
         
         if st.button("Start Detection"):
             if uploaded_file is not None:
-                # Check inserted .csv file
-                file_container = st.expander("Check your uploaded .csv")
-                shows = pd.read_csv(uploaded_file)
-                file_container.write(shows)
-                
                 # Send POST request to Flask API with CSV file
                 files = {'file': uploaded_file.getvalue()}
                 response = requests.post(url + "/api/detection", files=files)
