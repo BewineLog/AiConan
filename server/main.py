@@ -111,11 +111,18 @@ def save(data):
     if request.is_json:
         data = request.get_json()
 
-    result = model_classification(data['data'])  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
+    print(data['index'])
+    print(data['origin_data'])
+    print(data['data'])
+    print(data['user'])
 
+    result = model_classification(data['data'])  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
+    print(Counter(result.round().tolist()))     # for check # of classified attack
     label = pd.DataFrame({'attack': result.tolist()})
+    # user = pd.DataFrame({'user': data['user']})
     origin_data = pd.concat([data['origin_data'], label], axis=1)
-    print(origin_data)
+
+    print(origin_data)  # for check final data format
     # db_res = insert(origin_data)
 
     # if db_res == 'Success':
@@ -150,9 +157,15 @@ def data_transform_for_detection(data):
 
     if 'Unnamed: 0' in data.columns:
         idx = data['Unnamed: 0']
-        data.drop(columns='Unnamed: 0', axis = 1)
-    data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8', 'Label'])
-    data_df = data_df.drop('Label', axis=1)  # 향후 test file을 어떻게 구성할지에 따라 사라질 수도 있음.
+        data = data.drop(columns='Unnamed: 0', axis=1)
+
+    if 'Label' in data.columns:
+        data = data.drop(columns='Label', axis=1)
+
+    if 'DLC' in data.columns:
+        data = data.drop(columns='DLC', axis=1)
+    data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
+
     # Timestamp scaling
     timestamp = data_df['Timestamp']
     timestamp_data = data_df['Timestamp'].values.reshape(-1, 1)
@@ -167,7 +180,6 @@ def data_transform_for_detection(data):
     data_df['scaled_timestamp'] = scaled_timestamp_data.flatten()
 
     data_df = data_df.drop(columns='Timestamp', axis=1)
-    data_df = data_df.drop(columns='DLC', axis=1)
 
     data_df = data_df.reindex(
         columns=['scaled_timestamp', 'CAN ID', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
