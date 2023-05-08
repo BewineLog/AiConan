@@ -103,13 +103,14 @@ def detect():
     #   Attack detection using AI model
     timestamp, result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
     noa = Counter(result.round().tolist())[1.0]
-            # response = request.post('http://your-url.com/endpoint', data=row.to_json())
 
     #   Send data to classification model with index, timestamp, data, username
     index = np.where(result == 1)[0]
     timestamp = timestamp[index]
-    to_classification = {'index': index, 'timestamp': timestamp, 'data': np_data, 'user': json_file}
+    json_data = {'index': index, 'timestamp': timestamp, 'data': np_data, 'user': json_file}
+    json_data = json.dumps(json_data)
 
+    #   Data 전송 비동기 처리 시, json_data 사용하면 됨.
     resp['numberOfAttack'] = noa
     app.logger.info('binary classification success')
     # 응답 처리 코드
@@ -119,10 +120,10 @@ def detect():
 # maybe 비동기적으로 동작하면서, db로 정보 전송할 것임.
 @app.route('/data', methods=["POST"])
 def save(data):
-    data = pd.read_json(request.get_data(), orient='records')
+    if request.is_json:
+        data = request.get_json()
 
-    idx, timestamp, data = data_transform_for_classification(data)
-    result = model_classification(data)  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
+    result = model_classification(data['data'])  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
 
     db_data = np.append(data, result)
     db_data = np.append(db_data,timestamp) # @@이거 index 맞춰야해
