@@ -29,19 +29,8 @@ with open('/home/ec2-user/environment/AiConan/model/binary_scaler.pkl', 'rb') as
     scaler = pickle.load(f)  # Timestamp scaler
 with open('/home/ec2-user/environment/AiConan/model/binary_time_scaler.pkl', 'rb') as f:
     time_scaler = pickle.load(f)  # Timestamp scaler
-
-# model_bl = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binary_classification(LSTM)98.02.h5')  # learning for binary classification
-# model_bc = load_model('/home/ec2-user/environment/AiConan/model/Timeseries_binary_classification(CLF)98.02.h5')  # binary classification
 model = load_model('/home/ec2-user/environment/AiConan/model/binary_model.h5')
-
-# # 다중 분류 모델 파일 불러오기
-# model_mc = torch.load('/home/ec2-user/environment/AiConan/model/model.pth', map_location=torch.device('cpu'))
-# model_mc.load_state_dict(torch.load('/home/ec2-user/environment/AiConan/model/model_dict.pth', map_location=torch.device('cpu')))
-#
-# # for evaluation
-#
-# model_mc.eval()
-
+model_mc = load_model('/home/ec2-user/environment/AiConan/model/binary_model.h5')
 
 
 mysql_conn = pymysql.connect(
@@ -106,8 +95,7 @@ def detect():
 
     #   Send data to classification model with index, timestamp, data, username
     index = np.where(result == 1)[0]
-    timestamp = timestamp[index]
-    json_data = {'index': index, 'timestamp': timestamp, 'data': np_data, 'user': json_file}
+    json_data = {'index': index, 'timestamp': timestamp[index], 'origin_data': df_row[index], 'data': np_data[index], 'user': json_file}
     json_data = json.dumps(json_data)
 
     #   Data 전송 비동기 처리 시, json_data 사용하면 됨.
@@ -125,12 +113,13 @@ def save(data):
 
     result = model_classification(data['data'])  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
 
-    db_data = np.append(data, result)
-    db_data = np.append(db_data,timestamp) # @@이거 index 맞춰야해
-    db_res = insert(db_data)
+    label = pd.DataFrame({'attack': result.tolist()})
+    origin_data = pd.concat([data['origin_data'], label], axis=1)
+    print(origin_data)
+    # db_res = insert(origin_data)
 
-    if db_res == 'Success':
-        app.logger.info('db update success')
+    # if db_res == 'Success':
+    #     app.logger.info('db update success')
 
     # 응답 처리 코드
     return 200
@@ -187,20 +176,6 @@ def data_transform_for_detection(data):
     data_df = np.reshape(data_df, (data_df.shape[0], 1, data_df.shape[1]))
 
     return timestamp, data_df
-
-
-def data_transform_for_classification(data):
-    idx = data['Unnamed: 0']    # index가 필요할 경우
-    timestamp = data['Timestamp']
-
-    data_df = data.drop('Label', axis=1)  # 향후 test file을 어떻게 구성할지에 따라 사라질 수도 있음.
-    data_df = data_df.drop('Timestamp', axis=1)
-
-    # 차원 변환
-    data_df = np.expand_dims(data_df, axis=-1)
-    data_df = np.reshape(data_df, (data_df.shape[0], 1, data_df.shape[1]))
-
-    return idx, timestamp, data_df
 
 
 # make connection with AWS RDS DB
