@@ -88,18 +88,28 @@ def authenticate():
 @app.route('/api/detection', methods=["POST"])
 def detect():
     noa = 0  # # of attack
-    data = request.files['file']  # get csv file from web, file name in ['']
-    
+
+    if request.files.get('file'):
+        data = request.files['file']  # get csv file from web, file name in ['']
+    if request.files.get('json_file'):  # get json file from web for username
+        json_file = request.files['json_file']
+
+    #   Data preprocessing
     csv_data = pd.read_csv(data)
     df_row = pd.DataFrame(csv_data, columns=csv_data.columns)
     np_data = data_transform_for_detection(df_row)
     resp = dict()
 
-    # for row in csv_data.values:
-    result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
-    # unique, counts = np.unique(tf.round(result).numpy(), return_counts=True)
+    #   Attack detection using AI model
+    timestamp, result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
     noa = Counter(result.round().tolist())[1.0]
             # response = request.post('http://your-url.com/endpoint', data=row.to_json())
+
+    #   Send data to classification model with index, timestamp, data, username
+    index = np.where(result == 1)[0]
+    timestamp = timestamp[index]
+    to_classification = {'index': index, 'timestamp': timestamp, 'data': np_data, 'user': json_file}
+
     resp['numberOfAttack'] = noa
     app.logger.info('binary classification success')
     # 응답 처리 코드
@@ -154,6 +164,7 @@ def data_transform_for_detection(data):
     data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8', 'Label'])
     data_df = data_df.drop('Label', axis=1)  # 향후 test file을 어떻게 구성할지에 따라 사라질 수도 있음.
     # Timestamp scaling
+    timestamp = data_df['Timestamp']
     timestamp_data = data_df['Timestamp'].values.reshape(-1, 1)
     scaled_timestamp_data = time_scaler.transform(timestamp_data)
 
@@ -174,7 +185,7 @@ def data_transform_for_detection(data):
     data_df = np.expand_dims(data_df, axis=-1)
     data_df = np.reshape(data_df, (data_df.shape[0], 1, data_df.shape[1]))
 
-    return data_df
+    return timestamp, data_df
 
 
 def data_transform_for_classification(data):
