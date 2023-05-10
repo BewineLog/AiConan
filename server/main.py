@@ -118,9 +118,11 @@ def detect():
         # response = requests.post(url + "/data", json=json_data)
 
     else:
+        print(">>>>>> normal?")
         if 'Unnamed: 0' in df_row.columns:
-            data = df_row.drop(columns='Unnamed: 0', axis=1)
-        insert(data)
+            df_row.drop(columns='Unnamed: 0', axis=1,inplace=True)
+        print('>>df???',type(df_row))
+        insert(df_row)
 
     #   Data 전송 비동기 처리 시, json_data 사용하면 됨.
     resp['numberOfAttack'] = noa
@@ -181,9 +183,8 @@ def data_transform_for_detection(data):
         data = data.drop(columns='Unnamed: 0', axis=1)
     if 'Label' in data.columns:
         data = data.drop(columns='Label', axis=1)
-    if 'DLC' in data.columns:
-        data = data.drop(columns='DLC', axis=1)
-    data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
+        
+    data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
 
     # Timestamp scaling
     timestamp = data_df['Timestamp']
@@ -200,7 +201,7 @@ def data_transform_for_detection(data):
     data_df = data_df.drop(columns='Timestamp', axis=1)
 
     data_df = data_df.reindex(
-        columns=['scaled_timestamp', 'CAN ID', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
+        columns=['scaled_timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
 
     before_expand_df = data_df
     # 차원 변환
@@ -225,10 +226,11 @@ def insert(data):
     app.logger.info('save data to DB')
     cursor = mysql_conn.cursor()
 
-    print(data)
+    print('??data??',type(data))
     # Build a list of tuples, each representing a row to be inserted into the database
     rows_to_insert = []
-    for row in data:
+    for index, row in data.iterrows():
+        print(">> ?? >>", type(row))
         data_string =  str(row['Data1']) + str(row['Data2'])+ str(row['Data3'])+ str(row['Data4'])+str(row['Data5'])+\
             str(row['Data6'])+\
             str(row['Data7'])+\
@@ -236,7 +238,7 @@ def insert(data):
         attack_type = 1 if int(row['Label']) == 0 else 2 if int(row['Label']) == 4 else 3 if int(row['Label']) == 3 else 4
         row_tuple = (
             str(row['DLC']),
-            str(row['ID']),
+            str(row['CAN ID']),
             data_string,
             float(row['Timestamp']),
             attack_type
