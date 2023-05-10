@@ -4,6 +4,7 @@ import numpy as np
 import pandas
 import pandas as pd
 import pymysql
+import requests
 from flask import Flask, request, jsonify, render_template, redirect, session
 
 import config
@@ -30,7 +31,7 @@ with open('/home/ec2-user/environment/AiConan/model/binary_scaler.pkl', 'rb') as
 with open('/home/ec2-user/environment/AiConan/model/binary_time_scaler.pkl', 'rb') as f:
     time_scaler = pickle.load(f)  # Timestamp scaler
 model = load_model('/home/ec2-user/environment/AiConan/model/binary_model.h5')
-model_mc = load_model('/home/ec2-user/environment/AiConan/model/binary_model.h5')
+model_mc = load_model('/home/ec2-user/environment/AiConan/model/model.h5')
 
 
 mysql_conn = pymysql.connect(
@@ -83,16 +84,17 @@ def logout():
 @app.route('/api/detection', methods=["POST"])
 def detect():
     noa = 0  # # of attack
+    
 
-    if request.files.get('file'):   # get csv file for packet data
-        data = request.files['file']
-    if request.files.get('json_file'):  # get json file for username
-        json_file = request.files['json_file']
+    data = request.files['file']
+    username = request.form['username']
+    print('>>',username)
+
 
     #   Data preprocessing
     csv_data = pd.read_csv(data)
     df_row = pd.DataFrame(csv_data, columns=csv_data.columns)
-    timestamp, df_data, np_data = data_transform_for_detection(df_row)
+    timestamp, before_np_data, np_data = data_transform_for_detection(df_row)
     resp = dict()
 
     #   Attack detection using AI model
@@ -103,8 +105,11 @@ def detect():
     index = np.where(result.round() == 1)[0]
 
     if len(index) > 0:
-        json_data = {'index': index, 'origin_data': df_row.iloc[index,:], 'data': df_data.iloc[index,:], 'user': json_file}
-        json_data = json.dumps(json_data)
+        json_data = {'index': index, 'origin_data': df_row.iloc[index,:], 'data': before_np_data.iloc[index,:], 'user': username}
+        # json_data = json.dumps(json_data)
+
+        save(json_data)
+        # response = requests.post(url + "/data", json=json_data)
 
     #   Data 전송 비동기 처리 시, json_data 사용하면 됨.
     resp['numberOfAttack'] = noa
@@ -112,9 +117,6 @@ def detect():
     # 응답 처리 코드
     return jsonify(json.dumps(resp)), 200
 
-
-# maybe 비동기적으로 동작하면서, db로 정보 전송할 것임.
-@app.route('/data', methods=["POST"])
 def save(data):
     if request.is_json:
         data = request.get_json()
@@ -124,10 +126,17 @@ def save(data):
     print(data['data'])
     print(data['user'])
 
-    result = model_classification(data['data'])  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
-    print(Counter(result.round().tolist()))     # for check # of classified attack
-    label = pd.DataFrame({'attack': result.tolist()})
+    if 'Unnamed 0:' in data['data'].columns:
+        data['data'].drop('Unnamed: 0',axis =1 ,inplace = True)
+    
+    np_data = np.expand_dims(data['data'],axis=-1)
+    np_data = np.reshape(np_data,(np_data.shape[0],1,np_data.shape[1]))
+    result = model_classification(np_data)  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
+    print('>>>',Counter(result.tolist()))     # for check # of classified attack
+    # label = pd.DataFrame({'attack': result.tolist()})
     # user = pd.DataFrame({'user': data['user']})
+    
+    # ex) insert into abnormal_packets(dlc, can_net_id, data, timestamp, attack_types_id) values (1,1,0101010, 103, 2);
     origin_data = pd.concat([data['origin_data'], label], axis=1)
 
     print(origin_data)  # for check final data format
@@ -152,8 +161,8 @@ def model_detection(data):
 
 
 def model_classification(data):
-    which_attack = model_mc(data)
-    return which_attack
+    which_attack = model_mc.predict(data)
+    return np.argmax(which_attack,axis=1)
 
 
 # if get data file from Spring. it makes data useful to model

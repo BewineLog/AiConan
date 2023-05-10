@@ -61,7 +61,6 @@ def create_chart(data):
 # define login page interface
 def login():
     st.title('Admin Login')
-    placeholder = st.empty()
     userId = st.text_input('userId')
     password = st.text_input('password', type="password")
     
@@ -71,8 +70,6 @@ def login():
         if response.status_code == 200 and 'token' in response.json():
             st.success('Login successful')
             st.session_state.token = response.json()['token']
-            placeholder.empty()
-            st.write("hello")
             admin_page()
         else:
             st.error('Invalid user ID or password.')
@@ -147,7 +144,7 @@ def user_page():
         )
         
         input_user_name = st.text_input(label="User Name", value="default")
-        json_request = {'username': input_user_name}
+        user_input = {"username" : input_user_name}
         
         if uploaded_file is not None:
             # Check inserted .csv file
@@ -160,15 +157,16 @@ def user_page():
             if uploaded_file is not None:
                 # Send POST request to Flask API with CSV file
                 files = {'file': uploaded_file.getvalue()}
-                response = requests.post(url + "/api/detection", files=files, json=json_request)
-            
+                response = requests.post(url + "/api/detection", files=files, data=user_input)
+                
                 # Check response status
                 if response.status_code == 200:
                     # Check response content for "DoS Attack Detected" message
                     
                     response_json = json.loads(response.text)
-                    print(">> ", response_json)
-                    number_of_attack = int(response_json["number_of_attack"])
+                    number_of_attack = response_json.split(' ')[1][:-1]
+                    print(">> ", number_of_attack)
+                    number_of_attack = int(number_of_attack)
                     if number_of_attack > 0:
                         st.warning(f"{number_of_attack} Attack Detected!")
                     else:
