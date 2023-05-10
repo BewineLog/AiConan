@@ -152,16 +152,15 @@ def user_page():
             
                 # Check response status
                 if response.status_code == 200:
-                    # Check response content for "DoS Attack Detected" message
                     
                     response_json = json.loads(response.text)
                     print(">> ", response_json)
-                    number_of_attack = int(response_json[-2])
-
+                    number_of_attack = int(response_json["number_of_attack"])
+                    
                     if number_of_attack > 0:
-                         st.warning(number_of_attack + " Attack Detected!")
+                        st.warning(f"{number_of_attack} Attack Detected!")
                     else:
-                        st.success(f"""💡 Detection Finished!""")
+                        st.success("💡 Detection Finished!")
                       
                 else:
                     st.error("Error uploading CSV file.")

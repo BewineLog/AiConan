@@ -95,6 +95,7 @@ def detect():
 
     #   Send data to classification model with index, timestamp, data, username
     index = np.where(result.round() == 1)[0]
+
     json_data = {'index': index, 'timestamp': timestamp[index], 'origin_data': df_row[index], 'data': np_data[index], 'user': json_file}
     json_data = json.dumps(json_data)
 
