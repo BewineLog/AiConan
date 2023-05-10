@@ -5,6 +5,7 @@ import streamlit as st
 import requests
 import altair as alt
 import json
+from flask import redirect, url_for
 
 ###################################
 from st_aggrid import AgGrid
@@ -67,10 +68,9 @@ def login():
     if st.button('Login'):
         response = requests.post(url + "/authenticate", data={'userId': userId, 'password': password})
         
-        if response.status_code == 200 and 'token' in response.json():
+        if response.status_code == 302:
             st.success('Login successful')
             st.session_state.token = response.json()['token']
-            admin_page()
         else:
             st.error('Invalid user ID or password.')
 
