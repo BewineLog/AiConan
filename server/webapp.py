@@ -147,6 +147,7 @@ def user_page():
         )
         
         input_user_name = st.text_input(label="User Name", value="default")
+        json_request = {'username': input_user_name}
         
         if uploaded_file is not None:
             # Check inserted .csv file
@@ -159,7 +160,7 @@ def user_page():
             if uploaded_file is not None:
                 # Send POST request to Flask API with CSV file
                 files = {'file': uploaded_file.getvalue()}
-                response = requests.post(url + "/api/detection", files=files)
+                response = requests.post(url + "/api/detection", files=files, json=json_request)
             
                 # Check response status
                 if response.status_code == 200:
