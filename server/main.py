@@ -250,12 +250,12 @@ def insert(data):
     #     )
     #     rows_to_insert.append(row_tuple)
     #
-    # # Execute a batch insert query to insert all rows at once
-    # query = "INSERT INTO abnormal_packets (dlc, can_net_id, data_1, data_2, data_3, data_4, data_5, data_6, data_7, data_8, timestamp, attack_types_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-    # result = cursor.executemany(query, rows_to_insert)
-    #
-    # # Commit the changes to the database
-    # mysql_conn.commit()
+    # Execute a batch insert query to insert all rows at once
+    query = "INSERT INTO abnormal_packets (dlc, can_net_id, data, timestamp, attack_types_id) VALUES (%s, %s, %s, %s, %s)"
+    result = cursor.executemany(query, rows_to_insert)
+    
+    # Commit the changes to the database
+    mysql_conn.commit()
 
     return 'Success'
 
