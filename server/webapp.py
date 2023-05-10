@@ -157,11 +157,9 @@ def user_page():
                     response_json = json.loads(response.text)
                     print(">> ", response_json)
                     number_of_attack = int(response_json[-2])
-       
-                    print(">> ", number_of_attack)
 
                     if number_of_attack > 0:
-                         st.warning(" Attack Detected!")
+                         st.warning(number_of_attack + " Attack Detected!")
                     else:
                         st.success(f"""💡 Detection Finished!""")
                       

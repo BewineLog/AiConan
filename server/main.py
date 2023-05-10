@@ -78,19 +78,19 @@ def authenticate():
 def detect():
     noa = 0  # # of attack
 
-    if request.files.get('file'):
-        data = request.files['file']  # get csv file from web, file name in ['']
-    if request.files.get('json_file'):  # get json file from web for username
+    if request.files.get('file'):   # get csv file for packet data
+        data = request.files['file']
+    if request.files.get('json_file'):  # get json file for username
         json_file = request.files['json_file']
 
     #   Data preprocessing
     csv_data = pd.read_csv(data)
     df_row = pd.DataFrame(csv_data, columns=csv_data.columns)
-    np_data = data_transform_for_detection(df_row)
+    timestamp, np_data = data_transform_for_detection(df_row)
     resp = dict()
 
     #   Attack detection using AI model
-    timestamp, result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
+    result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
     noa = Counter(result.round().tolist())[1.0]
 
     #   Send data to classification model with index, timestamp, data, username
@@ -133,18 +133,14 @@ def save(data):
 
 
 def model_detection(data):
-    # model not uploading
-    # 1. scaling
-    # 2. model1 -> model2
-    # 3. result
-
-    # use model model_bl, model_bc
     threshold = 1.0556942654891701
+
+    # attack detection using anomaly detection AI model
     res = model(data)
     mse = np.mean(np.power(data - res, 2), axis=1)
     y_pred = np.where(mse > threshold * 0.1, 1, 0)
     is_attack = np.mean(y_pred, axis=1)
-    return is_attack  # if model uploaded, change to model(data)
+    return is_attack
 
 
 def model_classification(data):
@@ -158,10 +154,8 @@ def data_transform_for_detection(data):
     if 'Unnamed: 0' in data.columns:
         idx = data['Unnamed: 0']
         data = data.drop(columns='Unnamed: 0', axis=1)
-
     if 'Label' in data.columns:
         data = data.drop(columns='Label', axis=1)
-
     if 'DLC' in data.columns:
         data = data.drop(columns='DLC', axis=1)
     data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
@@ -176,7 +170,6 @@ def data_transform_for_detection(data):
     data_df[cols_to_scale] = scaler.fit_transform(data_df[cols_to_scale])
 
     # 변환된 데이터를 다시 데이터프레임에 반영
-    # data_df = data_df.astype('int')
     data_df['scaled_timestamp'] = scaled_timestamp_data.flatten()
 
     data_df = data_df.drop(columns='Timestamp', axis=1)
