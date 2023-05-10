@@ -94,6 +94,9 @@ def detect():
     #   Data preprocessing
     csv_data = pd.read_csv(data)
     df_row = pd.DataFrame(csv_data, columns=csv_data.columns)
+
+    ###나중에 Unnamed: 0 여기서 다 떨구기
+
     timestamp, before_np_data, np_data = data_transform_for_detection(df_row)
     resp = dict()
 
@@ -104,12 +107,18 @@ def detect():
     #   Send data to classification model with index, timestamp, data, username
     index = np.where(result.round() == 1)[0]
 
-    if len(index) > 0:
-        json_data = {'index': index, 'origin_data': df_row.iloc[index,:], 'data': before_np_data.iloc[index,:], 'user': username}
+    if len(index) > 0:  # 공격 데이터가 있다는 가정하에만 해놓은 거고, 공격 데이터가 아예 없을 떄도 필요
+        json_data = {'index': index, 'origin_data': df_row, 'data': before_np_data.iloc[index,:], 'user': username}
         # json_data = json.dumps(json_data)
+
 
         save(json_data)
         # response = requests.post(url + "/data", json=json_data)
+
+    else:
+        if 'Unnamed: 0' in df_row.columns:
+            data = df_row.drop(columns='Unnamed: 0', axis=1)
+        insert(data)
 
     #   Data 전송 비동기 처리 시, json_data 사용하면 됨.
     resp['numberOfAttack'] = noa
@@ -128,19 +137,16 @@ def save(data):
 
     if 'Unnamed 0:' in data['data'].columns:
         data['data'].drop('Unnamed: 0',axis =1 ,inplace = True)
+    if 'Unnamed 0:' in data['origin_data'].columns:
+        data['origin_data'].drop('Unnamed: 0', axis=1, inplace=True)
     
     np_data = np.expand_dims(data['data'],axis=-1)
     np_data = np.reshape(np_data,(np_data.shape[0],1,np_data.shape[1]))
     result = model_classification(np_data)  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
     print('>>>',Counter(result.tolist()))     # for check # of classified attack
-    # label = pd.DataFrame({'attack': result.tolist()})
-    # user = pd.DataFrame({'user': data['user']})
-    
-    # ex) insert into abnormal_packets(dlc, can_net_id, data, timestamp, attack_types_id) values (1,1,0101010, 103, 2);
-    origin_data = pd.concat([data['origin_data'], label], axis=1)
-
-    print(origin_data)  # for check final data format
-    # db_res = insert(origin_data)
+    data['origin_data'][data['index']]['Label'] = result
+    print(data['origin_data'])
+    db_res = insert(data['origin_data'])
 
     # if db_res == 'Success':
     #     app.logger.info('db update success')
@@ -217,36 +223,37 @@ def insert(data):
     app.logger.info('save data to DB')
     cursor = mysql_conn.cursor()
 
+    print(data)
     # Build a list of tuples, each representing a row to be inserted into the database
-    rows_to_insert = []
-    for row in data:
-        # Convert the timestamp value to a datetime object
-        timestamp = datetime.datetime.utcfromtimestamp(row['timestamp'])
-        # Format the timestamp as a string in the format '%Y-%m-%d %H:%M:%S.%f'
-        timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')
-
-        row_tuple = (
-            str(row['DLC']),
-            str(row['ID']),
-            str(row['data'][0]),
-            str(row['data'][1]),
-            str(row['data'][2]),
-            str(row['data'][3]),
-            str(row['data'][4]),
-            str(row['data'][5]),
-            str(row['data'][6]),
-            str(row['data'][7]),
-            timestamp_str,
-            int(row['attack'])
-        )
-        rows_to_insert.append(row_tuple)
-
-    # Execute a batch insert query to insert all rows at once
-    query = "INSERT INTO abnormal_packets (dlc, can_net_id, data_1, data_2, data_3, data_4, data_5, data_6, data_7, data_8, timestamp, attack_types_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-    result = cursor.executemany(query, rows_to_insert)
-
-    # Commit the changes to the database
-    mysql_conn.commit()
+    # rows_to_insert = []
+    # for row in data:
+    #     # Convert the timestamp value to a datetime object
+    #     timestamp = datetime.datetime.utcfromtimestamp(row['timestamp'])
+    #     # Format the timestamp as a string in the format '%Y-%m-%d %H:%M:%S.%f'
+    #     timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')
+    #
+    #     row_tuple = (
+    #         str(row['DLC']),
+    #         str(row['ID']),
+    #         str(row['data'][0]),
+    #         str(row['data'][1]),
+    #         str(row['data'][2]),
+    #         str(row['data'][3]),
+    #         str(row['data'][4]),
+    #         str(row['data'][5]),
+    #         str(row['data'][6]),
+    #         str(row['data'][7]),
+    #         timestamp_str,
+    #         int(row['attack'])
+    #     )
+    #     rows_to_insert.append(row_tuple)
+    #
+    # # Execute a batch insert query to insert all rows at once
+    # query = "INSERT INTO abnormal_packets (dlc, can_net_id, data_1, data_2, data_3, data_4, data_5, data_6, data_7, data_8, timestamp, attack_types_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+    # result = cursor.executemany(query, rows_to_insert)
+    #
+    # # Commit the changes to the database
+    # mysql_conn.commit()
 
     return 'Success'
 
