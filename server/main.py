@@ -233,12 +233,13 @@ def insert(data):
             str(row['data'][5])+\
             str(row['data'][6])+\
             str(row['data'][7])
+        attack_type = 1 if int(row['Label']) == 0 else 2 if int(row['Label']) == 4 else 3 if int(row['Label']) == 3 else 4
         row_tuple = (
             str(row['DLC']),
             str(row['ID']),
             data_string,
             float(row['Timestamp']),
-            int(row['Label'])
+            attack_type
         )
         rows_to_insert.append(row_tuple)
 
