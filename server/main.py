@@ -92,7 +92,7 @@ def detect():
     #   Data preprocessing
     csv_data = pd.read_csv(data)
     df_row = pd.DataFrame(csv_data, columns=csv_data.columns)
-    timestamp, np_data = data_transform_for_detection(df_row)
+    timestamp, df_data, np_data = data_transform_for_detection(df_row)
     resp = dict()
 
     #   Attack detection using AI model
@@ -102,8 +102,9 @@ def detect():
     #   Send data to classification model with index, timestamp, data, username
     index = np.where(result.round() == 1)[0]
 
-    json_data = {'index': index, 'origin_data': df_row[index], 'data': np_data[index], 'user': json_file}
-    json_data = json.dumps(json_data)
+    if len(index) > 0:
+        json_data = {'index': index, 'origin_data': df_row.iloc[index,:], 'data': df_data.iloc[index,:], 'user': json_file}
+        json_data = json.dumps(json_data)
 
     #   Data 전송 비동기 처리 시, json_data 사용하면 됨.
     resp['numberOfAttack'] = noa
@@ -183,11 +184,13 @@ def data_transform_for_detection(data):
 
     data_df = data_df.reindex(
         columns=['scaled_timestamp', 'CAN ID', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
+
+    before_expand_df = data_df
     # 차원 변환
     data_df = np.expand_dims(data_df, axis=-1)
     data_df = np.reshape(data_df, (data_df.shape[0], 1, data_df.shape[1]))
 
-    return timestamp, data_df
+    return timestamp, before_expand_df, data_df
 
 
 # make connection with AWS RDS DB
