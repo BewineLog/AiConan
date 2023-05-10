@@ -94,7 +94,15 @@ def detect():
     noa = Counter(result.round().tolist())[1.0]
 
     #   Send data to classification model with index, timestamp, data, username
-    index = np.where(result == 1)[0]
+    index = np.where(result.round() == 1)[0]
+    print(result.shape)
+    print('==========')
+    print(index)
+    print(len(index))
+    print(type(index))
+    print('==========')
+    print(timestamp)
+    print('==========')
     json_data = {'index': index, 'timestamp': timestamp[index], 'origin_data': df_row[index], 'data': np_data[index], 'user': json_file}
     json_data = json.dumps(json_data)
 
