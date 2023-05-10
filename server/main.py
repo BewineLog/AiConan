@@ -144,7 +144,7 @@ def save(data):
     np_data = np.reshape(np_data,(np_data.shape[0],1,np_data.shape[1]))
     result = model_classification(np_data)  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
     print('>>>',Counter(result.tolist()))     # for check # of classified attack
-    data['origin_data'][data['index']]['Label'] = result
+    data['origin_data'].iloc[data['index'],:]['Label'] = result
     print(data['origin_data'])
     db_res = insert(data['origin_data'])
 
