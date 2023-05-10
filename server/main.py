@@ -72,7 +72,13 @@ def authenticate():
         return jsonify({'token': token})
     else:
         return jsonify({'error': 'Invalid user ID or password.'}), 401
-      
+
+# define logout endpoint
+@app.route('/logout')
+def logout():
+    session.pop('admin', None)
+    return jsonify({'message': 'Logout successful'})
+
 # communicate with web
 @app.route('/api/detection', methods=["POST"])
 def detect():

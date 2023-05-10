@@ -58,10 +58,10 @@ def create_chart(data):
 
     return chart
 
-
 # define login page interface
 def login():
     st.title('Admin Login')
+    placeholder = st.empty()
     userId = st.text_input('userId')
     password = st.text_input('password', type="password")
     
@@ -71,10 +71,11 @@ def login():
         if response.status_code == 200 and 'token' in response.json():
             st.success('Login successful')
             st.session_state.token = response.json()['token']
+            placeholder.empty()
+            st.write("hello")
             admin_page()
         else:
             st.error('Invalid user ID or password.')
-
 
 def admin_page():
     print(">> welcome to admin page")
@@ -120,6 +121,16 @@ def admin_page():
             
     #     else:
     #         st.error("Error fetching data from Flask API.")
+    
+    if st.button('Logout'):
+        headers = {'Authorization': 'Bearer ' + st.session_state.token}
+        response = requests.get(url + '/logout', headers=headers)
+        if response.status_code == 200:
+            st.success('Logout successful')
+            st.session_state.token = None
+            login()
+        else:
+            st.error('Logout failed')
 
 
 def user_page():
@@ -152,16 +163,15 @@ def user_page():
             
                 # Check response status
                 if response.status_code == 200:
+                    # Check response content for "DoS Attack Detected" message
                     
                     response_json = json.loads(response.text)
                     print(">> ", response_json)
                     number_of_attack = int(response_json["number_of_attack"])
-                    
                     if number_of_attack > 0:
                         st.warning(f"{number_of_attack} Attack Detected!")
                     else:
                         st.success("💡 Detection Finished!")
-                      
                 else:
                     st.error("Error uploading CSV file.")
             
