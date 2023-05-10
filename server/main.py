@@ -229,10 +229,10 @@ def insert(data):
     # Build a list of tuples, each representing a row to be inserted into the database
     rows_to_insert = []
     for row in data:
-        data_string =  str(row['data'][0]) + str(row['data'][1])+ str(row['data'][2])+ str(row['data'][3])+str(row['data'][4])+\
-            str(row['data'][5])+\
-            str(row['data'][6])+\
-            str(row['data'][7])
+        data_string =  str(row['Data1']) + str(row['Data2'])+ str(row['Data3'])+ str(row['Data4'])+str(row['Data5'])+\
+            str(row['Data6'])+\
+            str(row['Data7'])+\
+            str(row['Data8'])
         attack_type = 1 if int(row['Label']) == 0 else 2 if int(row['Label']) == 4 else 3 if int(row['Label']) == 3 else 4
         row_tuple = (
             str(row['DLC']),
