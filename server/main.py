@@ -227,33 +227,25 @@ def insert(data):
 
     print(data)
     # Build a list of tuples, each representing a row to be inserted into the database
-    # rows_to_insert = []
-    # for row in data:
-    #     # Convert the timestamp value to a datetime object
-    #     timestamp = datetime.datetime.utcfromtimestamp(row['timestamp'])
-    #     # Format the timestamp as a string in the format '%Y-%m-%d %H:%M:%S.%f'
-    #     timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')
-    #
-    #     row_tuple = (
-    #         str(row['DLC']),
-    #         str(row['ID']),
-    #         str(row['data'][0]),
-    #         str(row['data'][1]),
-    #         str(row['data'][2]),
-    #         str(row['data'][3]),
-    #         str(row['data'][4]),
-    #         str(row['data'][5]),
-    #         str(row['data'][6]),
-    #         str(row['data'][7]),
-    #         timestamp_str,
-    #         int(row['attack'])
-    #     )
-    #     rows_to_insert.append(row_tuple)
-    #
+    rows_to_insert = []
+    for row in data:
+        data_string =  str(row['data'][0]) + str(row['data'][1])+ str(row['data'][2])+ str(row['data'][3])+str(row['data'][4])+\
+            str(row['data'][5])+\
+            str(row['data'][6])+\
+            str(row['data'][7])
+        row_tuple = (
+            str(row['DLC']),
+            str(row['ID']),
+            data_string,
+            float(row['Timestamp']),
+            int(row['Label'])
+        )
+        rows_to_insert.append(row_tuple)
+
     # Execute a batch insert query to insert all rows at once
     query = "INSERT INTO abnormal_packets (dlc, can_net_id, data, timestamp, attack_types_id) VALUES (%s, %s, %s, %s, %s)"
     result = cursor.executemany(query, rows_to_insert)
-    
+
     # Commit the changes to the database
     mysql_conn.commit()
 
