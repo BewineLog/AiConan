@@ -5,7 +5,7 @@ import pandas
 import pandas as pd
 import pymysql
 import requests
-from flask import Flask, request, jsonify, render_template, redirect, session
+from flask import Flask, request, jsonify, render_template, redirect, session, url_for
 
 import config
 import os
@@ -68,9 +68,11 @@ def authenticate():
     import uuid
     if admin is not None:
         token = str(uuid.uuid4())
+        session['token'] = token
         session['admin'] = admin['id']
         print(">>> admin login")
-        return jsonify({'token': token})
+        return redirect(url_for('admin_page'))
+        
     else:
         return jsonify({'error': 'Invalid user ID or password.'}), 401
 
