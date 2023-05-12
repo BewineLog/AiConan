@@ -6,6 +6,8 @@ import pandas as pd
 import pymysql
 import requests
 from flask import Flask, request, jsonify, render_template, redirect, session, url_for
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+
 
 import config
 import os
@@ -45,6 +47,59 @@ mysql_conn = pymysql.connect(
 )
 
 app.secret_key = os.environ.get("APP_SECRET_KEY", "default_secret_key")
+
+# Define a User class that implements the Flask-Login user mixin
+class User:
+    def __init__(self, id, username, password):
+        self.id = id
+        self.username = username
+        self.password = password
+
+    def __repr__(self):
+        return f"User({self.username!r})"
+
+# Load a user from the database
+@login_manager.user_loader
+def load_user(user_id):
+    cursor.execute("SELECT * FROM admin WHERE id=?", (user_id,))
+    row = cursor.fetchone()
+    if row:
+        return User(*row)
+
+# Set up routes for registering and logging in users
+@app.route("/login", methods=["POST"])
+def login():
+    username = request.form["username"]
+    password = request.form["password"]
+    cursor.execute("SELECT * FROM admin WHERE username=? AND password=?", (username, password))
+    row = cursor.fetchone()
+    if row:
+        user = User(*row)
+        login_user(user)
+        return "Logged in successfully."
+    else:
+        return "Invalid username or password."
+
+@app.route("/register", methods=["POST"])
+def register():
+    username = request.form["username"]
+    password = request.form["password"]
+    cursor.execute("SELECT * FROM users WHERE username=?", (username,))
+    row = cursor.fetchone()
+    if row:
+        return "Username is already taken."
+    else:
+        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        conn.commit()
+        return "Registered successfully."
+
+# Set up a route for logging out users
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return "Logged out successfully."
+
 
 # define login page endpoint
 @app.route('/auth')
