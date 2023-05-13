@@ -29,10 +29,17 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # 이진 분류 모델 파일 불러오기
 with open('/home/ec2-user/environment/AiConan/model/data_scaler.pkl', 'rb') as f:
-    scaler = pickle.load(f)  # Timestamp scaler
+    scaler = pickle.load(f)  # data scaler
 with open('/home/ec2-user/environment/AiConan/model/timestamp_scaler.pkl', 'rb') as f:
     time_scaler = pickle.load(f)  # Timestamp scaler
 model = load_model('/home/ec2-user/environment/AiConan/model/binary_model.h5')
+
+# 다중 분류 모델 파일 불러오기
+with open('/home/ec2-user/environment/AiConan/model/data_scaler_mc.pkl', 'rb') as f:
+    scaler_mc = pickle.load(f)  # data scaler
+with open('/home/ec2-user/environment/AiConan/model/timestamp_scaler_mc.pkl', 'rb') as f:
+    time_scaler_mc = pickle.load(f)  # Timestamp scaler
+
 model_mc = load_model('/home/ec2-user/environment/AiConan/model/model.h5')
 
 
@@ -91,27 +98,28 @@ def detect():
 
     data = request.files['file']
     username = request.form['username']
-    print('>>',username)
+    # print('>>',username)
 
 
     #   Data preprocessing
     csv_data = pd.read_csv(data)
     df_row = pd.DataFrame(csv_data, columns=csv_data.columns)
 
-    ###나중에 Unnamed: 0 여기서 다 떨구기
+    if 'Unnamed: 0' in df_row.columns:
+            df_row.drop(columns='Unnamed: 0', axis=1,inplace=True)
 
-    timestamp, before_np_data, np_data = data_transform_for_detection(df_row)
+    np_data = data_transform_for_detection(df_row)
     resp = dict()
 
     #   Attack detection using AI model
     result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
     noa = Counter(result.round().tolist())[1.0]
-
+    print('binary_model res:',Counter(result.round().tolist()))
     #   Send data to classification model with index, timestamp, data, username
     index = np.where(result.round() == 1)[0]
 
     if len(index) > 0:  # 공격 데이터가 있다는 가정하에만 해놓은 거고, 공격 데이터가 아예 없을 떄도 필요
-        json_data = {'index': index, 'origin_data': df_row, 'data': before_np_data.iloc[index,:], 'user': username}
+        json_data = {'index': index, 'origin_data': df_row, 'user': username}
         # json_data = json.dumps(json_data)
 
 
@@ -119,10 +127,8 @@ def detect():
         # response = requests.post(url + "/data", json=json_data)
 
     else:
-        print(">>>>>> normal?")
-        if 'Unnamed: 0' in df_row.columns:
-            df_row.drop(columns='Unnamed: 0', axis=1,inplace=True)
-        print('>>df???',type(df_row))
+    
+        # print('>>df???',type(df_row))
         insert(df_row)
 
     #   Data 전송 비동기 처리 시, json_data 사용하면 됨.
@@ -135,15 +141,9 @@ def save(data):
     if request.is_json:
         data = request.get_json()
 
-    print(data['index'])
-    print(data['origin_data'])
-    print(data['data'])
-    print(data['user'])
-
-    if 'Unnamed 0:' in data['data'].columns:
-        data['data'].drop('Unnamed: 0',axis =1 ,inplace = True)
-    if 'Unnamed 0:' in data['origin_data'].columns:
-        data['origin_data'].drop('Unnamed: 0', axis=1, inplace=True)
+    # print(data['index'])
+    # print(data['origin_data'])
+    # print(data['user'])
     
     np_data = np.expand_dims(data['data'],axis=-1)
     np_data = np.reshape(np_data,(np_data.shape[0],1,np_data.shape[1]))
@@ -161,7 +161,7 @@ def save(data):
 
 
 def model_detection(data):
-    threshold = 1.0556942654891701
+    threshold = 0.9634705409763548
 
     # attack detection using anomaly detection AI model
     res = model(data)
@@ -175,13 +175,40 @@ def model_classification(data):
     which_attack = model_mc.predict(data)
     return np.argmax(which_attack,axis=1)
 
+def data_transform_for_classification(data):
+    if 'Label' in data.columns:
+        data = data.drop(columns='Label', axis=1)
+        
+    data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
+
+    # Timestamp scaling
+    timestamp = data_df['Timestamp']
+    timestamp_data = data_df['Timestamp'].values.reshape(-1, 1)
+    scaled_timestamp_data = time_scaler_mc.transform(timestamp_data)
+
+    # Data scaling
+    cols_to_scale = ['DLC','Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8']
+    data_df[cols_to_scale] = scaler_mc.transform(data_df[cols_to_scale])
+
+    # 변환된 데이터를 다시 데이터프레임에 반영
+    data_df['scaled_timestamp'] = scaled_timestamp_data.flatten()
+
+    data_df = data_df.drop(columns='Timestamp', axis=1)
+
+    data_df = data_df.reindex(
+        columns=['scaled_timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
+
+    # before_expand_df = data_df
+    # 차원 변환
+    data_df = np.expand_dims(data_df, axis=-1)
+    data_df = np.reshape(data_df, (data_df.shape[0], 1, data_df.shape[1]))
+
+    return data_df
 
 # if get data file from Spring. it makes data useful to model
 def data_transform_for_detection(data):
 
-    if 'Unnamed: 0' in data.columns:
-        idx = data['Unnamed: 0']
-        data = data.drop(columns='Unnamed: 0', axis=1)
+    
     if 'Label' in data.columns:
         data = data.drop(columns='Label', axis=1)
         
@@ -193,8 +220,8 @@ def data_transform_for_detection(data):
     scaled_timestamp_data = time_scaler.transform(timestamp_data)
 
     # Data scaling
-    cols_to_scale = ['Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8']
-    data_df[cols_to_scale] = scaler.fit_transform(data_df[cols_to_scale])
+    cols_to_scale = ['DLC','Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8']
+    data_df[cols_to_scale] = scaler.transform(data_df[cols_to_scale])
 
     # 변환된 데이터를 다시 데이터프레임에 반영
     data_df['scaled_timestamp'] = scaled_timestamp_data.flatten()
@@ -204,12 +231,12 @@ def data_transform_for_detection(data):
     data_df = data_df.reindex(
         columns=['scaled_timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
 
-    before_expand_df = data_df
+    # before_expand_df = data_df
     # 차원 변환
     data_df = np.expand_dims(data_df, axis=-1)
     data_df = np.reshape(data_df, (data_df.shape[0], 1, data_df.shape[1]))
 
-    return timestamp, before_expand_df, data_df
+    return data_df
 
 
 # make connection with AWS RDS DB
