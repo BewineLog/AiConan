@@ -5,10 +5,11 @@ import streamlit as st
 import requests
 import altair as alt
 import json
-from flask import redirect, url_for
+# from flask import redirect, url_for
+from streamlit_echarts import st_echarts
 
 ###################################
-from st_aggrid import AgGrid
+from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 
 ###################################
@@ -33,20 +34,81 @@ def _max_width_():
         unsafe_allow_html=True,
     )
     
-@st.experimental_memo(ttl=60 * 60 * 24)
+# @st.experimental_memo(ttl=60 * 60 * 24)
+# def create_chart(data):
+#     # Group data by attack type
+#     groups = data.groupby("attack_type_id")
+
+#     charts = []
+
+#     # Create a separate chart for each group
+#     for name, group in groups:
+#         chart = (
+#             alt.Chart(group, height=500, title=f"Attack Type {name}")
+#             .mark_line()
+#             .encode(
+#                 x=alt.X("timestamp:T", title="Date"),
+#                 y=alt.Y("count():Q", title="Packets"),
+#             )
+#             .interactive()
+#         )
+
+#         charts.append(chart)
+
+#     # Combine all charts into a single chart
+#     chart = alt.vconcat(*charts)
+
+    # return chart
+
+# define login page interface
+def login():
+    st.title('Admin Login')
+    userId = st.text_input('userId')
+    password = st.text_input('password', type="password")
+    
+    if st.button('Login'):
+        response = requests.post(url + "/authenticate", data={'userId': userId, 'password': password})
+        
+        if response.status_code == 200 and 'token' in response.json():
+            st.success('Login successful')
+            st.session_state.token = response.json()['token']
+            admin_page()
+        else:
+            st.error('Invalid user ID or password.')
+            
+
 def create_chart(data):
+    chart = alt.Chart(data).mark_bar().encode(
+        x=alt.X("attack_types_id:N", axis=alt.Axis(title="Attack Type")),
+        y=alt.Y("count():Q", axis=alt.Axis(title="Count")),
+    ).properties(width=700, height=400)
+    
+    return chart
+
+import altair as alt
+
+
+def create_graph(data):
     # Group data by attack type
-    groups = data.groupby("attack_type_id")
+    attack_type_names = {
+        1: "Normal",
+        2: "DOS",
+        3: "FUZZING",
+        4: "SPOOFING"
+    }
+    
+    groups = data.groupby("attack_types_id")
 
     charts = []
 
     # Create a separate chart for each group
     for name, group in groups:
+        print(name, " : ", group)
         chart = (
-            alt.Chart(group, height=500, title=f"Attack Type {name}")
+            alt.Chart(group, height=500, title=f"Attack Type {attack_type_names[name]}")
             .mark_line()
             .encode(
-                x=alt.X("timestamp:T", title="Date"),
+                x=alt.X("timestamp:T", title="timestamp"),
                 y=alt.Y("count():Q", title="Packets"),
             )
             .interactive()
@@ -59,66 +121,10 @@ def create_chart(data):
 
     return chart
 
-# define login page interface
-def login():
-    st.title('Admin Login')
-    userId = st.text_input('userId')
-    password = st.text_input('password', type="password")
-    
-    if st.button('Login'):
-        response = requests.post(url + "/authenticate", data={'userId': userId, 'password': password})
-        
-        if response.status_code == 302:
-            st.success('Login successful')
-            st.session_state.token = response.json()['token']
-        else:
-            st.error('Invalid user ID or password.')
-
 def admin_page():
     print(">> welcome to admin page")
     st.title("AIConan service Admin Page")
-    st.subheader("Packet Table 👇")
-    st.text("")
-    
-    # if st.button("Monitoring Graph"):
-    #     response = requests.get(url + "/api/data")
 
-    #     if response.status_code == 200:
-    #         # Display table
-    #         data = pd.read_csv(io.StringIO(response.text))
-            
-    #         from st_aggrid import GridUpdateMode, DataReturnMode
-            
-    #         gb = GridOptionsBuilder.from_dataframe(data)
-    #         gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
-    #         gb.configure_selection(selection_mode="multiple", use_checkbox=True)
-    #         gb.configure_side_bar()
-    #         gridOptions = gb.build()
-    #         response = AgGrid(
-    #             data,
-    #             gridOptions=gridOptions,
-    #             enable_enterprise_modules=True,
-    #             update_mode=GridUpdateMode.MODEL_CHANGED,
-    #             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-    #             fit_columns_on_grid_load=False,
-    #         )
-            
-    #         st.subheader("Packet Table 👇")
-    #         st.text("")
-    #         df = pd.DataFrame(response["selected_rows"])
-    #         st.table(df)
-    #         st.text("")
-            
-    #         st.subheader("Packet Graph 👇")
-    #         st.text("")
-    #         chart = create_chart(data)
-    #         st.altair_chart(chart, use_container_width=True)
-            
-    #         st.success("CSV file processed successfully!")
-            
-    #     else:
-    #         st.error("Error fetching data from Flask API.")
-    
     if st.button('Logout'):
         headers = {'Authorization': 'Bearer ' + st.session_state.token}
         response = requests.get(url + '/logout', headers=headers)
@@ -128,7 +134,59 @@ def admin_page():
             login()
         else:
             st.error('Logout failed')
+    
+    
+    response = requests.get(url + '/api/data')
+    print(">> monitoring graph")
+    if response.status_code == 200:
+        print(response.text)
 
+        # Parse JSON data
+        data = json.loads(response.text)
+
+        # Convert to DataFrame
+        data = pd.DataFrame(data)
+
+        # Display table
+        # data = pd.read_csv(io.StringIO(response.text))
+        
+        st.subheader("Packet Table")
+        st.text("")
+        gb = GridOptionsBuilder.from_dataframe(data)
+        gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
+        gb.configure_selection(selection_mode="multiple", use_checkbox=True)
+        gb.configure_side_bar()
+        gridOptions = gb.build()
+        response = AgGrid(
+            data,
+            gridOptions=gridOptions,
+            enable_enterprise_modules=True,
+            update_mode=GridUpdateMode.MODEL_CHANGED,
+            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+            fit_columns_on_grid_load=False,
+        )
+        
+    
+        st.subheader("Packet Graph 👇")
+        st.text("")
+        chart = create_graph(data)
+        st.altair_chart(chart, use_container_width=True)
+
+        # st.text("")
+        # df = pd.DataFrame(response["selected_rows"])
+        # st.table(df)
+        # st.text("")
+        
+        st.subheader("Packet Chart 👇")
+        st.text("")
+        chart = create_chart(data)
+        st.altair_chart(chart, use_container_width=True)
+        
+        st.success("Data processed successfully!")
+        
+    else:
+        st.error("Error fetching data from Flask API.")
+    
 
 def user_page():
     

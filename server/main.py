@@ -45,61 +45,9 @@ mysql_conn = pymysql.connect(
     charset='utf8mb4',
     cursorclass=pymysql.cursors.DictCursor
 )
+cursor = mysql_conn.cursor()
 
 app.secret_key = os.environ.get("APP_SECRET_KEY", "default_secret_key")
-
-# Define a User class that implements the Flask-Login user mixin
-class User:
-    def __init__(self, id, username, password):
-        self.id = id
-        self.username = username
-        self.password = password
-
-    def __repr__(self):
-        return f"User({self.username!r})"
-
-# Load a user from the database
-@login_manager.user_loader
-def load_user(user_id):
-    cursor.execute("SELECT * FROM admin WHERE id=?", (user_id,))
-    row = cursor.fetchone()
-    if row:
-        return User(*row)
-
-# Set up routes for registering and logging in users
-@app.route("/login", methods=["POST"])
-def login():
-    username = request.form["username"]
-    password = request.form["password"]
-    cursor.execute("SELECT * FROM admin WHERE username=? AND password=?", (username, password))
-    row = cursor.fetchone()
-    if row:
-        user = User(*row)
-        login_user(user)
-        return "Logged in successfully."
-    else:
-        return "Invalid username or password."
-
-@app.route("/register", methods=["POST"])
-def register():
-    username = request.form["username"]
-    password = request.form["password"]
-    cursor.execute("SELECT * FROM users WHERE username=?", (username,))
-    row = cursor.fetchone()
-    if row:
-        return "Username is already taken."
-    else:
-        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
-        conn.commit()
-        return "Registered successfully."
-
-# Set up a route for logging out users
-@app.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    return "Logged out successfully."
-
 
 # define login page endpoint
 @app.route('/auth')
@@ -115,19 +63,16 @@ def authenticate():
     print(f">>> user id : {userId}, user pwd : {password}")
     
     # check if user exists in the database
-    cursor = mysql_conn.cursor()
     cursor.execute("SELECT id FROM admin WHERE userId = %s AND password = %s", (userId, password))
     admin = cursor.fetchone()
 
-    # if user exists, create a new authentication token and return it as a JSON response
+     # if user exists, create a new authentication token and return it as a JSON response
     import uuid
     if admin is not None:
         token = str(uuid.uuid4())
-        session['token'] = token
         session['admin'] = admin['id']
         print(">>> admin login")
-        return redirect(url_for('admin_page'))
-        
+        return jsonify({'token': token})
     else:
         return jsonify({'error': 'Invalid user ID or password.'}), 401
 
@@ -136,6 +81,7 @@ def authenticate():
 def logout():
     session.pop('admin', None)
     return jsonify({'message': 'Logout successful'})
+
 
 # communicate with web
 @app.route('/api/detection', methods=["POST"])
@@ -272,14 +218,13 @@ def data_transform_for_detection(data):
 #         app.config.from_object(config)
 #     else:
 #         app.config.update(test_config)
-#
+
 #     db.init_app(app)
 
 def insert(data):
     # data is an array of JSON objects, each containing the following keys: 
     # 'timestamp', 'ID', 'DLC', 'data', 'attack'
     app.logger.info('save data to DB')
-    cursor = mysql_conn.cursor()
 
     print('??data??',type(data))
     # Build a list of tuples, each representing a row to be inserted into the database
@@ -309,6 +254,13 @@ def insert(data):
 
     return 'Success'
 
+@app.route('/api/data', methods=["GET"])
+def getData():
+    cursor.execute("SELECT * FROM abnormal_packets;")
+    data = cursor.fetchall()
+    cursor.close()
+    return jsonify(data)
+    
 
 if __name__ == '__main__':
     # create_app().run('0.0.0.0', port=8000, debug=True)
