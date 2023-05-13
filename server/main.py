@@ -28,9 +28,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # 이진 분류 모델 파일 불러오기
-with open('/home/ec2-user/environment/AiConan/model/binary_scaler.pkl', 'rb') as f:
+with open('/home/ec2-user/environment/AiConan/model/data_scaler.pkl', 'rb') as f:
     scaler = pickle.load(f)  # Timestamp scaler
-with open('/home/ec2-user/environment/AiConan/model/binary_time_scaler.pkl', 'rb') as f:
+with open('/home/ec2-user/environment/AiConan/model/timestamp_scaler.pkl', 'rb') as f:
     time_scaler = pickle.load(f)  # Timestamp scaler
 model = load_model('/home/ec2-user/environment/AiConan/model/binary_model.h5')
 model_mc = load_model('/home/ec2-user/environment/AiConan/model/model.h5')
