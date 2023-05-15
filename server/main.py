@@ -37,7 +37,7 @@ model = load_model('/home/ec2-user/environment/AiConan/model/binary_model.h5')
 # 다중 분류 모델 파일 불러오기
 with open('/home/ec2-user/environment/AiConan/model/data_scaler_mc.pkl', 'rb') as f:
     scaler_mc = pickle.load(f)  # data scaler
-with open('/home/ec2-user/environment/AiConan/model/timestamp_scaler_mc.pkl', 'rb') as f:
+with open('/home/ec2-user/environment/AiConan/model/time_scaler_mc.pkl', 'rb') as f:
     time_scaler_mc = pickle.load(f)  # Timestamp scaler
 
 model_mc = load_model('/home/ec2-user/environment/AiConan/model/model.h5')
@@ -114,21 +114,24 @@ def detect():
     #   Attack detection using AI model
     result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
     noa = Counter(result.round().tolist())[1.0]
-    print('binary_model res:',Counter(result.round().tolist()))
+    print('>>binary_model res:',Counter(result.round().tolist()))
     #   Send data to classification model with index, timestamp, data, username
     index = np.where(result.round() == 1)[0]
 
     if len(index) > 0:  # 공격 데이터가 있다는 가정하에만 해놓은 거고, 공격 데이터가 아예 없을 떄도 필요
-        json_data = {'index': index, 'origin_data': df_row, 'user': username}
+        json_data = {'index': index, 'origin_data': df_row.iloc[index,:], 'user': username}
         # json_data = json.dumps(json_data)
 
 
         save(json_data)
+        
+        normal_df = df_row.drop(index)
+        print(Counter(normal_df['Label'].to_numpy().tolist()))
+        insert(normal_df)
         # response = requests.post(url + "/data", json=json_data)
 
     else:
-    
-        # print('>>df???',type(df_row))
+        print('>>df???',type(df_row))
         insert(df_row)
 
     #   Data 전송 비동기 처리 시, json_data 사용하면 됨.
@@ -141,20 +144,17 @@ def save(data):
     if request.is_json:
         data = request.get_json()
 
-    # print(data['index'])
-    # print(data['origin_data'])
-    # print(data['user'])
-    
-    np_data = np.expand_dims(data['data'],axis=-1)
-    np_data = np.reshape(np_data,(np_data.shape[0],1,np_data.shape[1]))
+    np_data = data_transform_for_classification(data['origin_data'])
     result = model_classification(np_data)  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
-    print('>>>',Counter(result.tolist()))     # for check # of classified attack
-    data['origin_data'].iloc[data['index'],:]['Label'] = result
-    print(data['origin_data'])
+    print('>>>classification',Counter(result.tolist()))     # for check # of classified attack
+    print(type(result))
+    data['origin_data'].loc[:,'Label']= result
+    print(data['origin_data']['Label'].value_counts())
+    # print(data['origin_data'])
     db_res = insert(data['origin_data'])
 
-    # if db_res == 'Success':
-    #     app.logger.info('db update success')
+    if db_res == 'Success':
+        app.logger.info('db update success')
 
     # 응답 처리 코드
     return 200
@@ -257,14 +257,14 @@ def insert(data):
     # Build a list of tuples, each representing a row to be inserted into the database
     rows_to_insert = []
     for index, row in data.iterrows():
-        print(">> ?? >>", type(row))
+        # print(">> ?? >>", type(row))
         data_string =  str(row['Data1']) + str(row['Data2'])+ str(row['Data3'])+ str(row['Data4'])+str(row['Data5'])+\
             str(row['Data6'])+\
             str(row['Data7'])+\
             str(row['Data8'])
         attack_type = 1 if int(row['Label']) == 0 else 2 if int(row['Label']) == 4 else 3 if int(row['Label']) == 3 else 4
         row_tuple = (
-            str(row['DLC']),
+            str(int(8)),
             str(row['CAN ID']),
             data_string,
             float(row['Timestamp']),
@@ -275,7 +275,7 @@ def insert(data):
     # Execute a batch insert query to insert all rows at once
     query = "INSERT INTO abnormal_packets (dlc, can_net_id, data, timestamp, attack_types_id) VALUES (%s, %s, %s, %s, %s)"
     result = cursor.executemany(query, rows_to_insert)
-
+    print('>> run?')
     # Commit the changes to the database
     mysql_conn.commit()
 

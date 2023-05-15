@@ -167,10 +167,10 @@ def admin_page():
         )
         
     
-        st.subheader("Packet Graph 👇")
-        st.text("")
-        chart = create_graph(data)
-        st.altair_chart(chart, use_container_width=True)
+        # st.subheader("Packet Graph 👇")
+        # st.text("")
+        # chart = create_graph(data)
+        # st.altair_chart(chart, use_container_width=True)
 
         # st.text("")
         # df = pd.DataFrame(response["selected_rows"])
