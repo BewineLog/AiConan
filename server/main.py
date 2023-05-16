@@ -95,33 +95,37 @@ def logout():
 def detect():
     noa = 0  # # of attack
     
-
+    #receive data from web
     data = request.files['file']
     username = request.form['username']
     # print('>>',username)
 
-
-    #   Data preprocessing
-    csv_data = pd.read_csv(data)
+    #  Data preprocessing
+    csv_data = pd.read_csv(data) 
     df_row = pd.DataFrame(csv_data, columns=csv_data.columns)
 
+    #   Drop unusable column
     if 'Unnamed: 0' in df_row.columns:
             df_row.drop(columns='Unnamed: 0', axis=1,inplace=True)
+            
+    if 'Label' in data.columns:
+        data = data.drop(columns='Label', axis=1)
 
-    np_data = data_transform_for_detection(df_row)
     resp = dict()
+    np_data = data_transform_for_detection(df_row)
 
     #   Attack detection using AI model
     result = model_detection(np_data)  # binary classification using AI 0: normal 1:  attack
     noa = Counter(result.round().tolist())[1.0]
+    resp['numberOfAttack'] = noa
     print('>>binary_model res:',Counter(result.round().tolist()))
-    #   Send data to classification model with index, timestamp, data, username
+    
+    #   Get attack data's index
     index = np.where(result.round() == 1)[0]
 
     if len(index) > 0:  # 공격 데이터가 있다는 가정하에만 해놓은 거고, 공격 데이터가 아예 없을 떄도 필요
         json_data = {'index': index, 'origin_data': df_row.iloc[index,:], 'user': username}
         # json_data = json.dumps(json_data)
-
 
         save(json_data)
         
@@ -135,7 +139,6 @@ def detect():
         insert(df_row)
 
     #   Data 전송 비동기 처리 시, json_data 사용하면 됨.
-    resp['numberOfAttack'] = noa
     app.logger.info('binary classification success')
     # 응답 처리 코드
     return jsonify(json.dumps(resp)), 200
@@ -161,7 +164,7 @@ def save(data):
 
 
 def model_detection(data):
-    threshold = 0.9634705409763548
+    threshold = 0.9634705409763548  # need to go to env.sh
 
     # attack detection using anomaly detection AI model
     res = model(data)
@@ -176,19 +179,18 @@ def model_classification(data):
     return np.argmax(which_attack,axis=1)
 
 def data_transform_for_classification(data):
-    if 'Label' in data.columns:
-        data = data.drop(columns='Label', axis=1)
         
     data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
 
-    # Timestamp scaling
-    timestamp = data_df['Timestamp']
-    timestamp_data = data_df['Timestamp'].values.reshape(-1, 1)
-    scaled_timestamp_data = time_scaler_mc.transform(timestamp_data)
 
     # Data scaling
     cols_to_scale = ['DLC','Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8']
     data_df[cols_to_scale] = scaler_mc.transform(data_df[cols_to_scale])
+    
+    # Timestamp scaling
+    timestamp = data_df['Timestamp']
+    timestamp_data = data_df['Timestamp'].values.reshape(-1, 1)
+    scaled_timestamp_data = time_scaler_mc.transform(timestamp_data)
 
     # 변환된 데이터를 다시 데이터프레임에 반영
     data_df['scaled_timestamp'] = scaled_timestamp_data.flatten()
@@ -207,21 +209,17 @@ def data_transform_for_classification(data):
 
 # if get data file from Spring. it makes data useful to model
 def data_transform_for_detection(data):
-
-    
-    if 'Label' in data.columns:
-        data = data.drop(columns='Label', axis=1)
         
     data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
-
-    # Timestamp scaling
-    timestamp = data_df['Timestamp']
-    timestamp_data = data_df['Timestamp'].values.reshape(-1, 1)
-    scaled_timestamp_data = time_scaler.transform(timestamp_data)
 
     # Data scaling
     cols_to_scale = ['DLC','Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8']
     data_df[cols_to_scale] = scaler.transform(data_df[cols_to_scale])
+    
+    # Timestamp scaling
+    timestamp = data_df['Timestamp']
+    timestamp_data = data_df['Timestamp'].values.reshape(-1, 1)
+    scaled_timestamp_data = time_scaler.transform(timestamp_data)
 
     # 변환된 데이터를 다시 데이터프레임에 반영
     data_df['scaled_timestamp'] = scaled_timestamp_data.flatten()
@@ -255,6 +253,7 @@ def insert(data):
 
     print('??data??',type(data))
     # Build a list of tuples, each representing a row to be inserted into the database
+    attack_list = []
     rows_to_insert = []
     for index, row in data.iterrows():
         # print(">> ?? >>", type(row))
@@ -263,6 +262,7 @@ def insert(data):
             str(row['Data7'])+\
             str(row['Data8'])
         attack_type = 1 if int(row['Label']) == 0 else 2 if int(row['Label']) == 4 else 3 if int(row['Label']) == 3 else 4
+        attack_list.append(attack_type)
         row_tuple = (
             str(int(8)),
             str(row['CAN ID']),
@@ -272,12 +272,13 @@ def insert(data):
         )
         rows_to_insert.append(row_tuple)
 
+    print(">> attack_list:",Counter(attack_list))
     # Execute a batch insert query to insert all rows at once
     query = "INSERT INTO abnormal_packets (dlc, can_net_id, data, timestamp, attack_types_id) VALUES (%s, %s, %s, %s, %s)"
     result = cursor.executemany(query, rows_to_insert)
-    print('>> run?')
     # Commit the changes to the database
     mysql_conn.commit()
+    print('>> run?')
 
     return 'Success'
 
