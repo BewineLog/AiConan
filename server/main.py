@@ -106,10 +106,8 @@ def detect():
 
     #   Drop unusable column
     if 'Unnamed: 0' in df_row.columns:
-            df_row.drop(columns='Unnamed: 0', axis=1,inplace=True)
+        df_row.drop(columns='Unnamed: 0', axis=1,inplace=True)
             
-    if 'Label' in data.columns:
-        data = data.drop(columns='Label', axis=1)
 
     resp = dict()
     np_data = data_transform_for_detection(df_row)
@@ -180,6 +178,9 @@ def model_classification(data):
 
 def data_transform_for_classification(data):
         
+    if 'Label' in data.columns:
+        data = data.drop(columns='Label', axis=1)
+        
     data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
 
 
@@ -209,6 +210,9 @@ def data_transform_for_classification(data):
 
 # if get data file from Spring. it makes data useful to model
 def data_transform_for_detection(data):
+        
+    if 'Label' in data.columns:
+        data = data.drop(columns='Label', axis=1)
         
     data_df = data.reindex(columns=['Timestamp', 'CAN ID', 'DLC', 'Data1', 'Data2', 'Data3', 'Data4', 'Data5', 'Data6', 'Data7', 'Data8'])
 
