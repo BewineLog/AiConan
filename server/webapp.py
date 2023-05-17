@@ -99,7 +99,56 @@ def admin_page():
         admin_content()
 
 def user_page():
-    st.title("User Page")
+    st.title("AI Conan Service")
+    c29, c30, c31 = st.columns([1, 6, 1])
+    
+    with c30:
+        uploaded_file = st.file_uploader(
+            "",
+            key="1",
+            help="Upload .csv file",
+        )
+        
+        input_user_name = st.text_input(label="User Name", value="default")
+        user_input = {"username" : input_user_name}
+        
+        if uploaded_file is not None:
+            # Check inserted .csv file
+            file_container = st.expander("Check your uploaded .csv")
+            shows = pd.read_csv(uploaded_file)
+            uploaded_file.seek(0)
+            file_container.write(shows)
+        
+        if st.button("Start Detection"):
+            if uploaded_file is not None:
+                # Send POST request to Flask API with CSV file
+                files = {'file': uploaded_file.getvalue()}
+                response = requests.post(url + "/api/detection", files=files, data=user_input)
+                
+                # Check response status
+                if response.status_code == 200:
+                    # Check response content for "DoS Attack Detected" message
+                    
+                    response_json = json.loads(response.text)
+                    number_of_attack = response_json.split(' ')[1][:-1]
+                    print(">> ", number_of_attack)
+                    number_of_attack = int(number_of_attack)
+                    if number_of_attack > 0:
+                        st.warning(f"{number_of_attack} Attack Detected!")
+                    else:
+                        st.success("💡 Detection Finished!")
+                else:
+                    st.error("Error uploading CSV file.")
+            
+        
+        else:
+            st.info(
+                f"""
+                    👆 Upload a .csv file first. Sample to try: [biostats.csv](https://people.sc.fsu.edu/~jburkardt/data/csv/biostats.csv)
+                    """
+            )
+            
+            st.stop()
 
 def show_page(page):
     if page == "User Page":
