@@ -89,18 +89,18 @@ def logout():
     session.pop('admin', None)
     return jsonify({'message': 'Logout successful'})
 
-from flask_sqlalchemy import SQLAlchemy
-# Initialize SQLAlchemy
-db = SQLAlchemy()
+# from flask_sqlalchemy import SQLAlchemy
+# # Initialize SQLAlchemy
+# db = SQLAlchemy()
 
-# Define User model
-class User(db.Model):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(255), nullable=False)
+# # Define User model
+# class User(db.Model):
+#     __tablename__ = 'users'
+#     id = db.Column(db.Integer, primary_key=True)
+#     username = db.Column(db.String(255), nullable=False)
 
-    def __init__(self, username):
-        self.username = username
+#     def __init__(self, username):
+#         self.username = username
 
 # communicate with web
 @app.route('/api/detection', methods=["POST"])
@@ -136,27 +136,29 @@ def detect():
     if len(index) > 0:  # 공격 데이터가 있다는 가정하에만 해놓은 거고, 공격 데이터가 아예 없을 떄도 필요
         json_data = {'index': index, 'origin_data': df_row.iloc[index,:], 'user': username}
         # json_data = json.dumps(json_data)
-
-        save(json_data)
+        
+        user_id = get_user_id(username)
+        save(json_data, user_id)
         
         normal_df = df_row.drop(index)
         print(Counter(normal_df['Label'].to_numpy().tolist()))
-        insert(normal_df)
+        insert(normal_df, user_id)
         # response = requests.post(url + "/data", json=json_data)
 
     else:
         print('>>df???',type(df_row))
-        insert(df_row)
+        user_id = get_user_id(username)
+        insert(df_row, user_id)
 
     #   Data 전송 비동기 처리 시, json_data 사용하면 됨.
     app.logger.info('binary classification success')
     # 응답 처리 코드
     return jsonify(json.dumps(resp)), 200
 
-def save(data):
+def save(data, user_id):
     if request.is_json:
         data = request.get_json()
-
+        
     np_data = data_transform_for_classification(data['origin_data'])
     result = model_classification(np_data)  # need to erase np_data timestamp np.delete(np_data,0,axis=1)
     print('>>>classification',Counter(result.tolist()))     # for check # of classified attack
@@ -164,14 +166,13 @@ def save(data):
     data['origin_data'].loc[:,'Label']= result
     print(data['origin_data']['Label'].value_counts())
     # print(data['origin_data'])
-    db_res = insert(data['origin_data'])
+    db_res = insert(data['origin_data'], user_id)
 
     if db_res == 'Success':
         app.logger.info('db update success')
 
     # 응답 처리 코드
     return 200
-
 
 def model_detection(data):
     threshold = 0.9634705409763548  # need to go to env.sh
@@ -262,7 +263,7 @@ def data_transform_for_detection(data):
 
 #     db.init_app(app)
 
-def insert(data):
+def insert(data, user_id):
     # data is an array of JSON objects, each containing the following keys: 
     # 'timestamp', 'ID', 'DLC', 'data', 'attack'
     app.logger.info('save data to DB')
@@ -284,27 +285,60 @@ def insert(data):
             str(row['CAN ID']),
             data_string,
             float(row['Timestamp']),
-            attack_type
+            attack_type,
+            user_id
         )
         rows_to_insert.append(row_tuple)
 
     print(">> attack_list:",Counter(attack_list))
     # Execute a batch insert query to insert all rows at once
-    query = "INSERT INTO abnormal_packets (dlc, can_net_id, data, timestamp, attack_types_id) VALUES (%s, %s, %s, %s, %s)"
+    query = "INSERT INTO abnormal_packets (dlc, can_net_id, data, timestamp, attack_types_id, user_id) VALUES (%s, %s, %s, %s, %s, %s)"
     result = cursor.executemany(query, rows_to_insert)
     # Commit the changes to the database
     mysql_conn.commit()
     print('>> run?')
 
     return 'Success'
+    
+def get_user_id(username):
+    with mysql_conn.cursor() as cursor:
+        cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+        user = cursor.fetchone()
+
+        if user is None:
+            cursor.execute("INSERT INTO users (username) VALUES (%s)", (username,))
+            mysql_conn.commit()
+            user_id = cursor.lastrowid
+        else:
+            user_id = user['id']
+
+    return user_id
 
 @app.route('/api/data', methods=["GET"])
-def getData():
-    cursor.execute("SELECT * FROM abnormal_packets;")
-    data = cursor.fetchall()
-    cursor.close()
+def get_data():
+    with mysql_conn.cursor() as cursor:
+        cursor.execute("SELECT * FROM abnormal_packets;")
+        data = cursor.fetchall()
+
     return jsonify(data)
-    
+@app.route('/users', methods=['GET'])
+def get_users():
+    with mysql_conn.cursor() as cursor:
+        cursor.execute("SELECT * FROM users")
+        users = cursor.fetchall()
+
+    return jsonify(users)
+
+@app.route('/data/<int:user_id>', methods=['GET'])
+def get_user_data(user_id):
+    with mysql_conn.cursor() as cursor:
+        cursor.execute("SELECT * FROM abnormal_packets WHERE user_id = %s;", (user_id,))
+        data = cursor.fetchall()
+
+    if not data:
+        return jsonify({'message': 'User not found'}), 404
+
+    return jsonify(data)
 
 if __name__ == '__main__':
     # create_app().run('0.0.0.0', port=8000, debug=True)

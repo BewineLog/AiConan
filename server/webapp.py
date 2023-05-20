@@ -48,39 +48,67 @@ def create_chart(data):
     return chart
 
 def admin_content():
-    # Fetch data button and other components...
-    if st.button('Fetch Data'):
+     # Fetch user data
+    headers = {'Authorization': 'Bearer ' + st.session_state.token}
+    response = requests.get(url + '/users', headers=headers)
+    if response.status_code != 200:
+        st.error('Failed to fetch user data.')
+        return
+    
+    user_data = response.json()
+    
+    # Display section buttons for each user
+    st.sidebar.title('User Sections')
+    selected_user = st.sidebar.radio('Select User', ['Full user data'] + [user['username'] for user in user_data])
+    
+    # Fetch data based on user selection
+    if selected_user == 'Full user data':
         with st.spinner('Loading data...'):
-            data = fetch_data()
-            if data is not None:
-                st.success('Data fetched successfully!')
-                st.dataframe(data)
-            else:
-                st.error('Error fetching data.')
+            data = fetch_data()  # Fetch data for all users
+    else:
+        # Fetch data for the selected user
+        user_id = next((user['id'] for user in user_data if user['username'] == selected_user), None)
+        if user_id is None:
+            st.error(f"User '{selected_user}' not found.")
+            return
+        
+        response = requests.get(url + f'/data/{user_id}', headers=headers)
+        if response.status_code != 200:
+            st.error('Error fetching data.')
+            return
+
+        data = pd.DataFrame(response.json())
+    
+        # Display data table
+        if data is not None:
+            st.success('Data fetched successfully!')
+        else:
+            st.error('No data available.')
                 
-        # Display table
-        st.subheader("Packet Table")
-        st.text("")
-        gb = GridOptionsBuilder.from_dataframe(data)
-        gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
-        gb.configure_selection(selection_mode="multiple", use_checkbox=True)
-        gb.configure_side_bar()
-        gridOptions = gb.build()
-        response = AgGrid(
-            data,
-            gridOptions=gridOptions,
-            enable_enterprise_modules=True,
-            update_mode=GridUpdateMode.MODEL_CHANGED,
-            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-            fit_columns_on_grid_load=False,
-        )
-        
-        st.subheader("Packet Chart 👇")
-        st.text("")
-        chart = create_chart(data)
-        st.altair_chart(chart, use_container_width=True)
-        
-        st.success("Data processed successfully!")
+    # Display table
+    st.subheader("Packet Table")
+    st.text("")
+    gb = GridOptionsBuilder.from_dataframe(data)
+    gb.configure_default_column(enablePivot=True, enableValue=True, enableRowGroup=True)
+    gb.configure_selection(selection_mode="multiple", use_checkbox=True)
+    gb.configure_side_bar()
+    gridOptions = gb.build()
+    response = AgGrid(
+        data,
+        gridOptions=gridOptions,
+        enable_enterprise_modules=True,
+        update_mode=GridUpdateMode.MODEL_CHANGED,
+        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+        fit_columns_on_grid_load=False,
+    )
+    
+    # Display Chart
+    st.subheader("Packet Chart")
+    st.text("")
+    chart = create_chart(data)
+    st.altair_chart(chart, use_container_width=True)
+    
+    st.success("Data processed successfully!")
 
 def admin_page():
     st.title("AIConan Service Admin Page")
@@ -108,37 +136,40 @@ def user_page():
             key="1",
             help="Upload .csv file",
         )
-        
-        input_user_name = st.text_input(label="User Name", value="default")
+        input_user_name = st.text_input(label="Enter User Name", value="default")
         user_input = {"username" : input_user_name}
-        
+ 
         if uploaded_file is not None:
             # Check inserted .csv file
             file_container = st.expander("Check your uploaded .csv")
             shows = pd.read_csv(uploaded_file)
             uploaded_file.seek(0)
+            
+            # Drop the 'Unnamed: 0' column if it exists
+            if 'Unnamed: 0' in shows.columns:
+                shows.drop('Unnamed: 0', axis=1, inplace=True)
+            
             file_container.write(shows)
-        
+
         if st.button("Start Detection"):
-            if uploaded_file is not None:
-                # Send POST request to Flask API with CSV file
-                files = {'file': uploaded_file.getvalue()}
-                response = requests.post(url + "/api/detection", files=files, data=user_input)
-                
-                # Check response status
-                if response.status_code == 200:
-                    # Check response content for "DoS Attack Detected" message
+            with st.spinner('Loading data...'):
+                if uploaded_file is not None:
+                    # Send POST request to Flask API with CSV file
+                    files = {'file': uploaded_file.getvalue()}
+                    response = requests.post(url + "/api/detection", files=files, data=user_input)
                     
-                    response_json = json.loads(response.text)
-                    number_of_attack = response_json.split(' ')[1][:-1]
-                    print(">> ", number_of_attack)
-                    number_of_attack = int(number_of_attack)
-                    if number_of_attack > 0:
-                        st.warning(f"{number_of_attack} Attack Detected!")
+                    # Check response status
+                    if response.status_code == 200:
+                        response_json = json.loads(response.text)
+                        number_of_attack = response_json.split(' ')[1][:-1]
+                        print(">> ", number_of_attack)
+                        number_of_attack = int(number_of_attack)
+                        if number_of_attack > 0:
+                            st.warning(f"{number_of_attack} Attack Detected!")
+                        else:
+                            st.success("💡 Detection Finished!")
                     else:
-                        st.success("💡 Detection Finished!")
-                else:
-                    st.error("Error uploading CSV file.")
+                        st.error("Error uploading CSV file.")
             
         
         else:
