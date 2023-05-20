@@ -89,6 +89,18 @@ def logout():
     session.pop('admin', None)
     return jsonify({'message': 'Logout successful'})
 
+from flask_sqlalchemy import SQLAlchemy
+# Initialize SQLAlchemy
+db = SQLAlchemy()
+
+# Define User model
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(255), nullable=False)
+
+    def __init__(self, username):
+        self.username = username
 
 # communicate with web
 @app.route('/api/detection', methods=["POST"])
@@ -107,7 +119,7 @@ def detect():
     #   Drop unusable column
     if 'Unnamed: 0' in df_row.columns:
         df_row.drop(columns='Unnamed: 0', axis=1,inplace=True)
-            
+
 
     resp = dict()
     np_data = data_transform_for_detection(df_row)
