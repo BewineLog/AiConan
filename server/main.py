@@ -56,11 +56,6 @@ cursor = mysql_conn.cursor()
 
 app.secret_key = os.environ.get("APP_SECRET_KEY", "default_secret_key")
 
-# define login page endpoint
-@app.route('/auth')
-def login():
-    return render_template('login.html')
-
 import secrets
 # define authentication endpoint
 @app.route('/authenticate', methods=['POST'])
