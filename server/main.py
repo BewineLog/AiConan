@@ -22,6 +22,7 @@ from model import Model
 #add
 from collections import Counter
 import tensorflow as tf
+import datetime
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -126,17 +127,17 @@ def detect():
     #   Get attack data's index
     index = np.where(result.round() == 1)[0]
 
+    user_id = get_user_id(username)
+    print(">> id : ", user_id)
     if len(index) > 0:  # if attack is existed
         json_data = {'index': index, 'origin_data': df_row.iloc[index,:], 'user': username}
         
-        user_id = get_user_id(username)
         save(json_data, user_id)
         
         normal_df = df_row.drop(index)
         insert(normal_df, user_id)
 
     else:
-        user_id = get_user_id(username)
         insert(df_row, user_id)
     
     app.logger.info('binary classification success')
@@ -250,17 +251,28 @@ def insert(data, user_id):
     attack_list = []
     rows_to_insert = []
     for index, row in data.iterrows():
+
+
+        #time data to 'HH:MM:SS'
+        
+        current_time = datetime.datetime.now()
+        time = row['Timestamp'] / 1000000000
+        time_delta = datetime.timedelta(seconds=time)
+        new_time = current_time + time_delta
+        
+        # print(new_time.strftime('%H:%M:%S.%f'))
         data_string =  str(row['Data1']) + str(row['Data2'])+ str(row['Data3'])+ str(row['Data4'])+str(row['Data5'])+\
             str(row['Data6'])+\
             str(row['Data7'])+\
             str(row['Data8'])
         attack_type = 1 if int(row['Label']) == 0 else 2 if int(row['Label']) == 4 else 3 if int(row['Label']) == 3 else 4
         attack_list.append(attack_type)
+
         row_tuple = (
             str(int(8)),
             str(row['CAN ID']),
             data_string,
-            float(row['Timestamp']),
+            str(new_time.strftime('%H:%M:%S.%f')),
             attack_type,
             user_id
         )

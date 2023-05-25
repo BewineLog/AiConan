@@ -41,11 +41,103 @@ def fetch_data():
     return None
 
 def create_chart(data):
+    # Define a dictionary mapping attack type IDs to their corresponding labels
+    attack_type_labels = {
+        1: 'Normal',
+        2: 'DoS',
+        3: 'Fuzzy',
+        4: 'Spoofing'
+    }
+
+    # Convert the attack types column to a string type
+    data['attack_types_id'] = data['attack_types_id'].astype(str)
+
     chart = alt.Chart(data).mark_bar().encode(
-        x=alt.X("attack_types_id:N", axis=alt.Axis(title="Attack Type")),
+        x=alt.X("attack_types_id:N", axis=alt.Axis(title="Attack Type", 
+                                                   tickCount=len(attack_type_labels),
+                                                   labelExpr="datum.value === '1' ? 'Normal' : datum.value === '2' ? 'DoS' : datum.value === '3' ? 'Fuzzy' : 'Spoofing'",
+                                                   labelAngle=0)),
         y=alt.Y("count():Q", axis=alt.Axis(title="Count")),
     ).properties(width=700, height=400)
+
     return chart
+    
+def create_line_chart(data):
+    # Define a dictionary mapping attack type IDs to their corresponding labels
+    attack_type_labels = {
+        '1': 'Normal',
+        '2': 'DoS',
+        '3': 'Fuzzy',
+        '4': 'Spoofing'
+    }
+
+    # Convert the attack types column to a string type
+    data['attack_types_id'] = data['attack_types_id'].astype(str)
+
+    # Replace the attack type IDs with their corresponding labels
+    data['attack_types_id'] = data['attack_types_id'].map(attack_type_labels)
+    
+    # Drop rows with missing timestamps
+    data = data.dropna(subset=['timestamp', 'attack_types_id'])
+    
+    # Convert the timestamp column to a datetime object
+    # Make sure to use the correct unit for your timestamp
+    # data['timestamp'] = pd.to_datetime(data['timestamp'], format='%H:%M:%S.%f')
+    
+    
+    # Group by timestamp and attack type, count the number of messages (rows)
+    # current_date = datetime.date.today()
+    print(data['timestamp'].head(10))
+    current_date = pd.to_datetime('today').normalize()  # Get the current date (with time set to 00:00:00)
+    data['timestamp'] = pd.to_datetime(data['timestamp'], format='%H:%M:%S.%f').dt.floor('S')
+    data['timestamp'] = data['timestamp'].dt.time
+    data['timestamp'] = data['timestamp'].apply(lambda x: pd.Timestamp.combine(current_date, x))
+    print('>>:::',data['timestamp'].head(10))
+    # microsecond_range = pd.interval_range(start=data['timestamp'].min(), end=data['timestamp'].max(), freq='1U')
+    data = data.groupby([pd.Grouper(key='timestamp', freq='1S'), 'attack_types_id']).size().reset_index(name='count')
+    print(data['timestamp'].head(10))
+    # Check if all timestamps are unique or not
+    print("Number of unique timestamps:", data['timestamp'].nunique())
+    print("Number of total rows:", len(data))
+
+    # Check the type of min_timestamp and max_timestamp
+    min_timestamp = data['timestamp'].min()
+    max_timestamp = data['timestamp'].max()
+    print("Type of min_timestamp:", type(min_timestamp))
+    print("Type of max_timestamp:", type(max_timestamp))
+    # unique_timestamps = data['timestamp'].drop_duplicates().tolist()
+
+    # Print the min and max timestamps here
+    print('Min:', min_timestamp)
+    print('Max:', max_timestamp)
+    
+    uniq_timestamp = data['timestamp'].unique()
+    formatted_timestamp = [datetime.datetime.strptime(str(ts)[:-4], "%Y-%m-%dT%H:%M:%S.%f").strftime("%Y-%m-%d %H:%M:%S")
+                        for ts in uniq_timestamp]
+    print(formatted_timestamp)
+    if pd.isnull(min_timestamp) or pd.isnull(max_timestamp):
+        print('Invalid timestamp range detected. Cannot create the chart.')
+        return None
+
+    max_count = data['count'].max()
+    y_scale = alt.Scale(domain=(0, max_count + 300))
+    print('>>>',max_count)
+    # alt.data_transformers.disable_max_rows()
+    chart = alt.Chart(data).mark_line().encode(
+        # x=alt.X('timestamp:T', scale=alt.Scale(domain=(min_timestamp,max_timestamp)), title='Timestamp'),
+        # y=alt.Y('count:Q', scale=y_scale, title='Count'),
+        x=alt.X('timestamp:T',  title='Timestamp'),
+        y=alt.Y('count:Q',  title='Count'),
+        color=alt.Color('attack_types_id:N', legend=alt.Legend(title="Attack Type")),
+        tooltip=['timestamp:T','attack_types_id:N', 'count:Q']
+    ).properties(width=700, height=400)
+    
+    # st.altair_chart(chart, use_container_width=True)
+
+    # 데이터 표시
+    # st.write(data['count'])
+    return chart
+
 
 def admin_content():
      # Fetch user data
@@ -72,10 +164,11 @@ def admin_content():
             st.error(f"User '{selected_user}' not found.")
             return
         
-        response = requests.get(url + f'/data/{user_id}', headers=headers)
-        if response.status_code != 200:
-            st.error('Error fetching data.')
-            return
+        with st.spinner('Loading data...'):
+            response = requests.get(url + f'/data/{user_id}', headers=headers)
+            if response.status_code != 200:
+                st.error('Error fetching data.')
+                return
 
         data = pd.DataFrame(response.json())
     
@@ -84,7 +177,9 @@ def admin_content():
             st.success('Data fetched successfully!')
         else:
             st.error('No data available.')
-                
+    
+    
+    print('>>> ',data['timestamp'])         
     # Display table
     st.subheader("Packet Table")
     st.text("")
@@ -107,6 +202,19 @@ def admin_content():
     st.text("")
     chart = create_chart(data)
     st.altair_chart(chart, use_container_width=True)
+    
+    print('>>>?? ',data['timestamp']) 
+    line_chart = create_line_chart(data)
+    if line_chart is not None:
+        st.altair_chart(line_chart, use_container_width=True)
+    else:
+        st.write("Unable to create the chart due to invalid timestamp range.")
+        
+    # st.subheader("Packet Counts Over Time")
+    # st.text("")
+    # line_chart = create_line_chart(data)
+    # st.altair_chart(line_chart, use_container_width=True)
+    
     
     st.success("Data processed successfully!")
 
