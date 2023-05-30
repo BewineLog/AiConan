@@ -106,7 +106,7 @@ def detect():
     #receive data from web
     data = request.files['file']
     username = request.form['username']
-    
+    print(">detection user : ", username)
     #  Data preprocessing
     csv_data = pd.read_csv(data) 
     df_row = pd.DataFrame(csv_data, columns=csv_data.columns)

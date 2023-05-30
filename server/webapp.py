@@ -25,12 +25,12 @@ class LoginPage:
             response = requests.post(url + "/authenticate", data={'userId': self.userId, 'password': self.password})
             
             if response.status_code == 200 and 'token' in response.json():
-                st.success('Login successful')
                 st.session_state.token = response.json()['token']
                 return True
             else:
                 st.error('Invalid user ID or password.')
         return False
+
 
 def fetch_data():
     response = requests.get(url + '/api/data')
@@ -148,7 +148,7 @@ def admin_content():
         return
     
     user_data = response.json()
-    
+    print(user_data)
     # Display section buttons for each user
     st.sidebar.title('User Sections')
     selected_user = st.sidebar.radio('Select User', ['Full user data'] + [user['username'] for user in user_data])
@@ -220,6 +220,8 @@ def admin_content():
 
 def admin_page():
     st.title("AIConan Service Admin Page")
+    if 'token' not in st.session_state or st.session_state.token is None:
+        st.experimental_rerun()
 
     if st.button('Logout'):
         headers = {'Authorization': 'Bearer ' + st.session_state.token}
@@ -231,8 +233,7 @@ def admin_page():
         else:
             st.error('Logout failed')
 
-    if 'token' in st.session_state and st.session_state.token is not None:
-        admin_content()
+    admin_content()
 
 def user_page():
     st.title("AI Conan Service")
@@ -246,7 +247,8 @@ def user_page():
         )
         input_user_name = st.text_input(label="Enter User Name", value="default")
         user_input = {"username" : input_user_name}
- 
+        print(">>> input_username : ", user_input, "type : ", type(input_user_name))
+        
         if uploaded_file is not None:
             # Check inserted .csv file
             file_container = st.expander("Check your uploaded .csv")
@@ -283,10 +285,10 @@ def user_page():
         else:
             st.info(
                 f"""
-                    👆 Upload a .csv file first. Sample to try: [biostats.csv](https://people.sc.fsu.edu/~jburkardt/data/csv/biostats.csv)
+                    👆 Upload a .csv file first. Sample to try: [testDataset.csv](https://demoblog-bucket-uiwlov.s3.ap-northeast-2.amazonaws.com/test_dataset.csv)
                     """
             )
-            
+    
             st.stop()
 
 def show_page(page):
@@ -294,9 +296,9 @@ def show_page(page):
         user_page()
     elif page == "Admin Page":
         if 'token' not in st.session_state or st.session_state.token is None:
-            if not LoginPage().render():
-                return
-        admin_page()
+            LoginPage().render()
+        else:
+            admin_page()
 
 # Set the app page configuration
 st.set_page_config(page_title="AIConan Detecting Service", page_icon="favicon.ico")
