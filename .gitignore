@@ -5,3 +5,4 @@ nodeenv/
 .venv
 requirements.txt
 __pycache__
+memo.txt
