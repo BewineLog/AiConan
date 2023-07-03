@@ -80,48 +80,27 @@ def create_line_chart(data):
     # Drop rows with missing timestamps
     data = data.dropna(subset=['timestamp', 'attack_types_id'])
     
-    # Convert the timestamp column to a datetime object
-    # Make sure to use the correct unit for your timestamp
-    # data['timestamp'] = pd.to_datetime(data['timestamp'], format='%H:%M:%S.%f')
-    
-    
-    # Group by timestamp and attack type, count the number of messages (rows)
-    # current_date = datetime.date.today()
-    print(data['timestamp'].head(10))
+   
     current_date = pd.to_datetime('today').normalize()  # Get the current date (with time set to 00:00:00)
     data['timestamp'] = pd.to_datetime(data['timestamp'], format='%H:%M:%S.%f').dt.floor('S')
     data['timestamp'] = data['timestamp'].dt.time
     data['timestamp'] = data['timestamp'].apply(lambda x: pd.Timestamp.combine(current_date, x))
-    print('>>:::',data['timestamp'].head(10))
-    # microsecond_range = pd.interval_range(start=data['timestamp'].min(), end=data['timestamp'].max(), freq='1U')
-    data = data.groupby([pd.Grouper(key='timestamp', freq='1S'), 'attack_types_id']).size().reset_index(name='count')
-    print(data['timestamp'].head(10))
-    # Check if all timestamps are unique or not
-    print("Number of unique timestamps:", data['timestamp'].nunique())
-    print("Number of total rows:", len(data))
 
+    data = data.groupby([pd.Grouper(key='timestamp', freq='1S'), 'attack_types_id']).size().reset_index(name='count')
+    
     # Check the type of min_timestamp and max_timestamp
     min_timestamp = data['timestamp'].min()
     max_timestamp = data['timestamp'].max()
-    print("Type of min_timestamp:", type(min_timestamp))
-    print("Type of max_timestamp:", type(max_timestamp))
-    # unique_timestamps = data['timestamp'].drop_duplicates().tolist()
 
-    # Print the min and max timestamps here
-    print('Min:', min_timestamp)
-    print('Max:', max_timestamp)
-    
     uniq_timestamp = data['timestamp'].unique()
     formatted_timestamp = [datetime.datetime.strptime(str(ts)[:-4], "%Y-%m-%dT%H:%M:%S.%f").strftime("%Y-%m-%d %H:%M:%S")
                         for ts in uniq_timestamp]
-    print(formatted_timestamp)
     if pd.isnull(min_timestamp) or pd.isnull(max_timestamp):
         print('Invalid timestamp range detected. Cannot create the chart.')
         return None
 
     max_count = data['count'].max()
     y_scale = alt.Scale(domain=(0, max_count + 300))
-    print('>>>',max_count)
     # alt.data_transformers.disable_max_rows()
     chart = alt.Chart(data).mark_line().encode(
         # x=alt.X('timestamp:T', scale=alt.Scale(domain=(min_timestamp,max_timestamp)), title='Timestamp'),
@@ -148,7 +127,6 @@ def admin_content():
         return
     
     user_data = response.json()
-    print(user_data)
     # Display section buttons for each user
     st.sidebar.title('User Sections')
     selected_user = st.sidebar.radio('Select User', ['Full user data'] + [user['username'] for user in user_data])
@@ -179,7 +157,6 @@ def admin_content():
             st.error('No data available.')
     
     
-    print('>>> ',data['timestamp'])         
     # Display table
     st.subheader("Packet Table")
     st.text("")
@@ -203,7 +180,6 @@ def admin_content():
     chart = create_chart(data)
     st.altair_chart(chart, use_container_width=True)
     
-    print('>>>?? ',data['timestamp']) 
     line_chart = create_line_chart(data)
     if line_chart is not None:
         st.altair_chart(line_chart, use_container_width=True)
@@ -247,7 +223,6 @@ def user_page():
         )
         input_user_name = st.text_input(label="Enter User Name", value="default")
         user_input = {"username" : input_user_name}
-        print(">>> input_username : ", user_input, "type : ", type(input_user_name))
         
         if uploaded_file is not None:
             # Check inserted .csv file
